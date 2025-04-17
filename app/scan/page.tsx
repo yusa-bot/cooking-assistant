@@ -1,0 +1,177 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useRef, useEffect } from "react"
+import { ArrowLeft, Camera, ImageIcon, RefreshCw } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+export default function ScanPage() {
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [isCameraActive, setIsCameraActive] = useState(false)
+  const videoRef = useRef<HTMLVideo Element>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  // カメラを起動する関数
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      })
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        setIsCameraActive(true)
+      }
+    } catch (err) {
+      console.error("カメラへのアクセスに失敗しました:", err)
+      alert("カメラへのアクセスに失敗しました。デバイスの設定を確認してください。")
+    }
+  }
+
+  // カメラを停止する関数
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
+      tracks.forEach((track) => track.stop())
+      videoRef.current.srcObject = null
+      setIsCameraActive(false)
+    }
+  }
+
+  // 写真を撮影する関数
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      const context = canvas.getContext("2d")
+
+      // キャンバスのサイズをビデオのサイズに合わせる
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+
+      // ビデオフレームをキャンバスに描画
+      context?.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      // キャンバスの内容を画像URLとして取得
+      const imageUrl = canvas.toDataURL("image/jpeg")
+      setCapturedImage(imageUrl)
+
+      // カメラを停止
+      stopCamera()
+    }
+  }
+
+  // 写真を再撮影する関数
+  const retakePhoto = () => {
+    setCapturedImage(null)
+    startCamera()
+  }
+
+  // ファイル選択ダイアログを開く関数
+  const openFileSelector = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  // 選択されたファイルを処理する関数
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setCapturedImage(e.target?.result as string)
+        stopCamera()
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // コンポーネントがマウントされたときにカメラを起動
+  useEffect(() => {
+    startCamera()
+
+    // クリーンアップ関数
+    return () => {
+      stopCamera()
+    }
+  }, [])
+
+  return (
+    <main className="flex min-h-screen flex-col p-4 md:p-8">
+      <header className="w-full max-w-md mx-auto py-4 flex items-center justify-between">
+        <Link
+          href="/"
+          className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-5 w-5 mr-1" />
+          <span>戻る</span>
+        </Link>
+        <h1 className="text-xl font-semibold">材料をスキャン</h1>
+        <div className="w-16"></div> {/* スペーサー */}
+      </header>
+
+      <div className="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto">
+        <div className="w-full aspect-[3/4] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative mb-4">
+          {capturedImage ? (
+            // 撮影した写真のプレビュー
+            <img src={capturedImage || "/placeholder.svg"} alt="撮影した材料" className="w-full h-full object-cover" />
+          ) : (
+            // カメラのプレビュー
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+          )}
+
+          {/* 非表示のキャンバス要素 */}
+          <canvas ref={canvasRef} className="hidden" />
+
+          {/* 非表示のファイル入力 */}
+          <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileSelect} />
+        </div>
+
+        <div className="w-full flex flex-col space-y-4">
+          {!capturedImage ? (
+            <>
+              <button
+                onClick={capturePhoto}
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md w-full"
+                disabled={!isCameraActive}
+              >
+                <Camera className="mr-3 h-6 w-6" />
+                写真を撮影
+              </button>
+
+              <button
+                onClick={openFileSelector}
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
+              >
+                <ImageIcon className="mr-3 h-6 w-6" />
+                画像をアップロード
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={retakePhoto}
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
+              >
+                <RefreshCw className="mr-3 h-6 w-6" />
+                撮り直す
+              </button>
+
+              <button
+                onClick={() => router.push("/ingredients")}
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md w-full"
+              >
+                材料を確認
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
