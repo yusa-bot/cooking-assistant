@@ -1,23 +1,37 @@
 "use client"
 
+import type React from "react"
 import { Camera, LogIn, ChefHat, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
+import LoginPromptModal from "@/components/login-prompt-modal"
+
+// interface CookingHistory {
+//   id: number
+//   date: string
+//   recipeName: string
+//   imageUrl: string
+// }
 
 // 料理履歴の型定義
 interface CookingHistory {
-  id: number
-  date: string
-  recipeName: string
-  imageUrl: string
+  id: string         // ← uuid
+  userId: string     // ← user_id
+  recipeId: string   // ← recipe_id
+  photoUrl: string   // ← photo_url
+  isFavorite: boolean // ← is_favorite
+  cookedAt: string    // ← timestamptz（ISO文字列で受け取る）
+  recipeName: string // ← recipe_name
 }
 
-export default function Home() {
+export default function Dashboard() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState("")
   const [cookingHistory, setCookingHistory] = useState<CookingHistory[]>([])
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [loginFeature, setLoginFeature] = useState("この機能")
 
   // ログイン状態と履歴を確認
   useEffect(() => {
@@ -28,51 +42,24 @@ export default function Home() {
       setIsLoggedIn(true)
       setUsername(userData.username || "")
 
-      // ログイン済みの場合、履歴データを取得（実際のアプリではAPIから取得）
-      const mockHistory: CookingHistory[] = [
-        {
-          id: 1,
-          date: "2023年4月15日",
-          recipeName: "野菜炒め",
-          imageUrl: "/colorful-fruit-display.png",
-        },
-        {
-          id: 2,
-          date: "2023年4月10日",
-          recipeName: "トマトパスタ",
-          imageUrl: "/colorful-pasta-arrangement.png",
-        },
-        {
-          id: 3,
-          date: "2023年4月5日",
-          recipeName: "野菜スープ",
-          imageUrl: "/bowl-of-comfort.png",
-        },
-        {
-          id: 4,
-          date: "2023年4月1日",
-          recipeName: "サラダチキン",
-          imageUrl: "/stir-fry-vegetables.jpg",
-        },
-      ]
-      setCookingHistory(mockHistory)
-    } else {
-      // 未ログインの場合でもサンプルデータを表示（実際のアプリでは表示しない）
-      const sampleHistory: CookingHistory[] = [
-        {
-          id: 1,
-          date: "2023年4月15日",
-          recipeName: "野菜炒め",
-          imageUrl: "/colorful-fruit-display.png",
-        },
-        {
-          id: 2,
-          date: "2023年4月10日",
-          recipeName: "トマトパスタ",
-          imageUrl: "/colorful-pasta-arrangement.png",
-        },
-      ]
-      setCookingHistory(sampleHistory)
+      // ログイン済みの場合、履歴データを取得
+      const fetchHistory = async () => {
+        try {
+          const res = await fetch("/api/recipes", {
+            headers: {
+              Authorization: `Bearer ${userData.token}`,
+            },
+          })
+          if (!res.ok) throw new Error("履歴取得に失敗")
+          const data = await res.json()
+          setCookingHistory(data)
+        } catch (err) {
+          console.error("履歴の取得エラー:", err)
+          setCookingHistory([])
+        }
+      }
+
+      fetchHistory()
     }
   }, [])
 
@@ -83,6 +70,23 @@ export default function Home() {
     setUsername("")
   }
 
+  // 未ログイン時にログインモーダルを表示
+  const handleScanClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (!isLoggedIn) {
+      setLoginFeature("材料スキャン機能")
+      setShowLoginModal(true)
+    } else {
+      router.push("/scan")
+    }
+  }
+
+  // モーダルを閉じる
+  const closeLoginModal = () => {
+    setShowLoginModal(false)
+  }
+
+  //上記の関数をreturnに反映し、再読み込みして描画する
   return (
     <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-gray-50">
       {/* ヘッダー */}
@@ -92,6 +96,11 @@ export default function Home() {
           <h1 className="text-2xl font-bold">AIレシピアシスタント</h1>
         </div>
       </header>
+
+
+      <div className="text-green-600 text-center text-sm text-gray-500 mt-4">
+          <p>材料の写真を撮影してAIがレシピを提案します</p>
+      </div>
 
       <div className="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto space-y-8 py-4">
         {isLoggedIn && (
@@ -105,17 +114,17 @@ export default function Home() {
         <div className="w-full shadow-lg border rounded-lg overflow-hidden bg-white">
           <div className="p-6">
             <div className="flex flex-col space-y-4">
-              <Link
-                href="/scan"
-                className="h-16 text-lg justify-start font-medium flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md w-full"
+              <button
+                onClick={handleScanClick}
+                className="h-16 text-lg justify-start font-medium flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full"
               >
                 <Camera className="mr-3 h-6 w-6" />
                 材料をスキャンする
-              </Link>
+              </button>
 
               {isLoggedIn ? (
                 <button
-                  className="h-16 text-lg justify-start font-medium flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 w-full"
+                  className="h-16 text-lg justify-start font-medium flex items-center px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-100 w-full"
                   onClick={handleLogout}
                 >
                   <LogIn className="mr-3 h-6 w-6" />
@@ -124,7 +133,7 @@ export default function Home() {
               ) : (
                 <Link
                   href="/login"
-                  className="h-16 text-lg justify-start font-medium flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 w-full"
+                  className="h-16 text-lg justify-start font-medium flex items-center px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-100 w-full"
                 >
                   <LogIn className="mr-3 h-6 w-6" />
                   ログイン / 新規登録
@@ -138,7 +147,7 @@ export default function Home() {
         <div className="w-full mt-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">料理履歴</h2>
-            {isLoggedIn && (
+            {isLoggedIn && cookingHistory.length > 0 && (
               <Link href="/history" className="text-green-600 flex items-center text-sm">
                 もっと見る
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -147,28 +156,34 @@ export default function Home() {
           </div>
 
           {isLoggedIn ? (
-            <div className="overflow-x-auto pb-4">
-              <div className="flex space-x-4" style={{ minWidth: "min-content" }}>
-                {cookingHistory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex-shrink-0 w-40 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
-                      <img
-                        src={item.imageUrl || "/placeholder.svg"}
-                        alt={item.recipeName}
-                        className="w-full h-full object-cover"
-                      />
+            cookingHistory.length > 0 ? (
+              <div className="overflow-x-auto pb-4">
+                <div className="flex space-x-4" style={{ minWidth: "min-content" }}>
+                  {cookingHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex-shrink-0 w-40 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+                    >
+                      <div className="aspect-square w-full overflow-hidden">
+                        <img
+                          src={item.photoUrl || "/placeholder.svg"}
+                          alt={item.recipeName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm truncate">{item.recipeName}</h3>
+                        <p className="text-gray-500 text-xs mt-1">{item.cookedAt}</p>
+                      </div>
                     </div>
-                    <div className="p-3">
-                      <h3 className="font-medium text-sm truncate">{item.recipeName}</h3>
-                      <p className="text-gray-500 text-xs mt-1">{item.date}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <p className="text-gray-600">まだ料理履歴がありません。最初の料理を記録しましょう！</p>
+              </div>
+            )
           ) : (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
               <p className="text-gray-600 mb-2">ログインすると料理履歴を保存できます</p>
@@ -178,11 +193,10 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        <div className="text-center text-sm text-gray-500 mt-4">
-          <p>材料の写真を撮影してAIがレシピを提案します</p>
-        </div>
       </div>
+
+      {/* ログインプロンプトモーダル */}
+      <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName={loginFeature} />
     </main>
   )
 }

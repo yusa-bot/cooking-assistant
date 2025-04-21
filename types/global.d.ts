@@ -1,4 +1,3 @@
-// Web Speech APIの型定義
 interface Window {
   SpeechRecognition: typeof SpeechRecognition
   webkitSpeechRecognition: typeof SpeechRecognition

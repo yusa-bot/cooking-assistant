@@ -6,20 +6,56 @@ import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Plus, X, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import LoginPromptModal from "@/components/login-prompt-modal"
 
 export default function IngredientsPage() {
-  // 検出された材料のリスト（実際のアプリではAIからの結果を使用）
-  const [detectedIngredients, setDetectedIngredients] = useState<string[]>(["キャベツ", "にんじん", "玉ねぎ", "豚肉"])
+  // 検出された材料のリスト
+  const [detectedIngredients, setDetectedIngredients] = useState<string[]>([])
 
   // 新しい材料の入力用
   const [newIngredient, setNewIngredient] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   const router = useRouter()
 
-  // 食材の候補リスト（実際のアプリではもっと多くの候補を用意）
+  // ログインチェック
+  useEffect(() => {
+    const user = localStorage.getItem("user")
+    if (user) {
+      setIsLoggedIn(true)
+      fetchIngredients()
+    } else {
+      setShowLoginModal(true)
+    }
+  }, [])
+
+  const fetchIngredients = async () => {
+    const user = localStorage.getItem("user")
+    if (!user) return
+
+    const { token } = JSON.parse(user)
+
+    try {
+      const res = await fetch("/api/ai", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!res.ok) throw new Error("材料の取得に失敗しました")
+      const data = await res.json()
+      setDetectedIngredients(data.ingredients || [])
+    } catch (err) {
+      console.error(err)
+      setDetectedIngredients([])
+    }
+  }
+
+  // 食材の候補リスト
   const ingredientSuggestions = [
     "キャベツ",
     "にんじん",
@@ -162,9 +198,37 @@ export default function IngredientsPage() {
   }, [])
 
   // レシピ提案ページに進む
-  const goToRecipes = () => {
-    // 実際のアプリでは、ここで材料リストをAPIに送信するなどの処理を行う
-    router.push("/recipes")
+  const goToRecipes = async () => {
+    const user = localStorage.getItem("user")
+    if (!user) return
+    const { token } = JSON.parse(user)
+
+    try {
+      const res = await fetch("/api/recipes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ingredients: detectedIngredients }),
+      })
+
+      if (!res.ok) throw new Error("レシピ提案送信に失敗しました")
+      router.push("/recipes")
+    } catch (err) {
+      console.error(err)
+      alert("レシピ提案送信に失敗しました")
+    }
+  }
+
+  // モーダルを閉じる
+  const closeLoginModal = () => {
+    setShowLoginModal(false)
+    router.push("/")
+  }
+
+  if (!isLoggedIn && !showLoginModal) {
+    return null // ログインモーダルが表示される前は何も表示しない
   }
 
   return (
@@ -256,6 +320,9 @@ export default function IngredientsPage() {
           </button>
         </div>
       </div>
+
+      {/* ログインプロンプトモーダル */}
+      <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName="材料確認機能" />
     </main>
   )
 }

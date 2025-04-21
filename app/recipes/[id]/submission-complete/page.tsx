@@ -10,6 +10,14 @@ export default function SubmissionCompletePage() {
   const recipeId = Number(params.id)
   const router = useRouter()
 
+  // ログインチェックを追加
+  useEffect(() => {
+    const user = localStorage.getItem("user")
+    if (!user) {
+      router.push("/login")
+    }
+  }, [router])
+
   const [addedToRecipeBook, setAddedToRecipeBook] = useState(false)
   const [showAddConfirm, setShowAddConfirm] = useState(false)
 
@@ -97,7 +105,7 @@ export default function SubmissionCompletePage() {
             <div className="flex flex-col space-y-3">
               <button
                 onClick={toggleRecipeBook}
-                className={`w-full py-2 flex items-center justify-center rounded-md ${
+                className={`w-full py-2 flex items-center justify-center rounded-full ${
                   addedToRecipeBook
                     ? "bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
                     : "border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -109,7 +117,7 @@ export default function SubmissionCompletePage() {
 
               <button
                 onClick={goToHome}
-                className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center justify-center"
+                className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center"
               >
                 <Home className="h-5 w-5 mr-2" />
                 ホームに戻る
@@ -117,7 +125,7 @@ export default function SubmissionCompletePage() {
 
               <button
                 onClick={goToRecipes}
-                className="w-full py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                className="w-full py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
               >
                 他のレシピを見る
               </button>

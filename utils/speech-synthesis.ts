@@ -1,6 +1,3 @@
-// 音声読み上げ機能を管理するユーティリティ
-
-// シングルトンパターンで音声読み上げの状態を管理
 class SpeechSynthesisManager {
   private static instance: SpeechSynthesisManager
   private isSpeaking = false

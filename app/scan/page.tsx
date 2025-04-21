@@ -6,14 +6,28 @@ import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Camera, ImageIcon, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import LoginPromptModal from "@/components/login-prompt-modal"
 
 export default function ScanPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
-  const videoRef = useRef<HTMLVideo Element>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // ログインチェック
+  useEffect(() => {
+    const user = localStorage.getItem("user")
+    if (user) {
+      setIsLoggedIn(true)
+      startCamera()
+    } else {
+      setShowLoginModal(true)
+    }
+  }, [])
 
   // カメラを起動する関数
   const startCamera = async () => {
@@ -65,6 +79,35 @@ export default function ScanPage() {
     }
   }
 
+  const uploadPhotoToServer = async () => {
+    const user = localStorage.getItem("user")
+    if (!user || !capturedImage) return
+
+    const { token } = JSON.parse(user)
+
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image: capturedImage })
+      })
+
+      if (!res.ok) throw new Error("画像アップロードに失敗しました")
+
+      const result = await res.json()
+      console.log("アップロード成功:", result)
+
+      router.push("/ingredients")
+    } catch (err) {
+      console.error(err)
+      alert("画像の送信に失敗しました")
+    }
+  }
+
+
   // 写真を再撮影する関数
   const retakePhoto = () => {
     setCapturedImage(null)
@@ -91,15 +134,22 @@ export default function ScanPage() {
     }
   }
 
-  // コンポーネントがマウントされたときにカメラを起動
-  useEffect(() => {
-    startCamera()
+  // モーダルを閉じる
+  const closeLoginModal = () => {
+    setShowLoginModal(false)
+    router.push("/")
+  }
 
-    // クリーンアップ関数
+  // コンポーネントのクリーンアップ
+  useEffect(() => {
     return () => {
       stopCamera()
     }
   }, [])
+
+  if (!isLoggedIn && !showLoginModal) {
+    return null // ログインモーダルが表示される前は何も表示しない
+  }
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
@@ -172,6 +222,9 @@ export default function ScanPage() {
           )}
         </div>
       </div>
+
+      {/* ログインプロンプトモーダル */}
+      <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName="材料スキャン機能" />
     </main>
   )
 }

@@ -36,70 +36,61 @@ export default function RecipeStepsPage() {
   const [timerSeconds, setTimerSeconds] = useState<Record<number, number>>({})
   const timerIntervalsRef = useRef<Record<number, NodeJS.Timeout>>({})
   const [isSpeaking, setIsSpeaking] = useState(false)
-  const [showCompletionButton, setShowCompletionButton] = useState(false)
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
+  const [recipe, setRecipe] = useState<Recipe | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const contentRef = useRef<HTMLDivElement>(null)
-  const lastStepRef = useRef<HTMLDivElement>(null)
-
-  // レシピデータ（実際のアプリではAPIから取得）
-  const [recipe] = useState<Recipe>({
-    id: recipeId,
-    name: "野菜たっぷり豚肉炒め",
-    steps: [
-      {
-        id: 1,
-        instruction:
-          "材料を準備します。キャベツは一口大に切り、にんじんは細切りに、玉ねぎは薄切りにします。豚肉は一口大に切ります。",
-        imageUrl: "/step-preparation.jpg",
-      },
-      {
-        id: 2,
-        instruction: "フライパンに油を熱し、豚肉を中火で炒めます。肉の色が変わったら一旦取り出します。",
-        imageUrl: "/step-cook-meat.jpg",
-      },
-      {
-        id: 3,
-        instruction: "同じフライパンに玉ねぎを入れて炒め、透き通ってきたらにんじんを加えます。",
-        imageUrl: "/step-cook-onion-carrot.jpg",
-      },
-      {
-        id: 4,
-        instruction: "野菜がしんなりしてきたらキャベツを加え、全体が軽くしんなりするまで炒めます。",
-        imageUrl: "/step-cook-cabbage.jpg",
-        timer: 180, // 3分
-      },
-      {
-        id: 5,
-        instruction: "豚肉を戻し入れ、塩、こしょう、醤油で味付けします。全体を混ぜ合わせて完成です。",
-        imageUrl: "/step-final.jpg",
-      },
-    ],
-  })
-
-  // スクロール位置を監視して完了ボタンの表示を制御
+  // ログインチェックを追加
   useEffect(() => {
-    const handleScroll = () => {
-      if (!lastStepRef.current || !contentRef.current) return
-
-      const lastStepRect = lastStepRef.current.getBoundingClientRect()
-      const windowHeight = window.innerHeight
-
-      // 最後のステップが画面内に表示されたら完了ボタンを表示
-      if (lastStepRect.bottom <= windowHeight + 100) {
-        setShowCompletionButton(true)
-      } else {
-        setShowCompletionButton(false)
+    const fetchRecipe = async () => {
+      const user = localStorage.getItem("user")
+      if (!user) {
+        router.push("/login")
+        return
+      }
+  
+      const { token } = JSON.parse(user)
+  
+      try {
+        const res = await fetch(`/api/ai}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!res.ok) throw new Error("レシピ取得に失敗")
+        const data = await res.json()
+        setRecipe(data)
+      } catch (err) {
+        console.error("レシピ取得エラー:", err)
+        router.push("/recipes")
+      } finally {
+        setLoading(false)
       }
     }
+  
+    fetchRecipe()
+  }, [recipeId, router])
 
-    window.addEventListener("scroll", handleScroll)
-    // 初期表示時にもチェック
-    handleScroll()
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll)
+  // 次のステップに進む
+  const goToNextStep = () => {
+    if (recipe && currentStepIndex < recipe.steps.length - 1) {
+      setCurrentStepIndex(currentStepIndex + 1)
     }
-  }, [])
+  }
+
+  // 前のステップに戻る
+  const goToPrevStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(currentStepIndex - 1)
+    }
+  }
+
+  // 特定のステップに移動
+  const goToStep = (index: number) => {
+    if (recipe && index >= 0 && index < recipe.steps.length) {
+      setCurrentStepIndex(index)
+    }
+  }
 
   // 音声読み上げ
   const speakInstruction = (instruction: string) => {
@@ -242,6 +233,9 @@ export default function RecipeStepsPage() {
     }
   }, [])
 
+  if (loading) return <p className="text-center">読み込み中...</p>
+  if (!recipe) return <p className="text-center">レシピが見つかりません</p>
+
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <header className="w-full max-w-md mx-auto py-4 flex items-center justify-between sticky top-0 bg-gray-50 z-10">
@@ -256,7 +250,7 @@ export default function RecipeStepsPage() {
         <div className="w-16"></div> {/* スペーサー */}
       </header>
 
-      <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto" ref={contentRef}>
+      <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
         {/* 音声質問ボタン - 常に画面上部に固定 */}
         <div className="sticky top-16 z-10 w-full flex justify-center my-4">
           <button
@@ -291,81 +285,112 @@ export default function RecipeStepsPage() {
           </div>
         )}
 
-        {/* 調理手順 - 縦スクロール */}
-        <div className="w-full space-y-8 mb-24">
-          {recipe.steps.map((step, index) => (
-            <div
-              key={step.id}
-              className="w-full bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md"
-              ref={index === recipe.steps.length - 1 ? lastStepRef : undefined}
-            >
-              {step.imageUrl && (
-                <div className="aspect-[16/9] w-full overflow-hidden">
-                  <img
-                    src={step.imageUrl || "/placeholder.svg"}
-                    alt={`ステップ ${step.id}`}
-                    className="w-full h-full object-cover"
-                  />
+        {/* ステップインジケーター */}
+        <div className="w-full flex justify-center mb-4">
+          <div className="flex items-center space-x-2">
+            {recipe.steps.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToStep(index)}
+                className={`w-4 h-4 rounded-full ${
+                  index === currentStepIndex
+                    ? "bg-green-600"
+                    : index < currentStepIndex
+                      ? "bg-green-300"
+                      : "bg-gray-300 dark:bg-gray-600"
+                }`}
+                aria-label={`ステップ ${index + 1} へ移動`}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* 調理手順 - 1ステップずつ表示 */}
+        <div className="w-full mb-24">
+          <div className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-lg">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xl font-bold">
+                  ステップ {currentStepIndex + 1}/{recipe.steps.length}
+                </span>
+                <button
+                  onClick={() => speakInstruction(recipe.steps[currentStepIndex].instruction)}
+                  className={`p-4 rounded-full ${
+                    isSpeaking ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                  aria-label={isSpeaking ? "音声読み上げを停止" : "音声読み上げ"}
+                >
+                  <Volume2 className="h-7 w-7" />
+                </button>
+              </div>
+
+              <p className="text-gray-800 dark:text-gray-200 text-2xl font-bold mb-6 leading-relaxed">
+                {recipe.steps[currentStepIndex].instruction}
+              </p>
+
+              {/* タイマー */}
+              {recipe.steps[currentStepIndex].timer && (
+                <div className="mt-4 mb-6">
+                  {activeTimers[recipe.steps[currentStepIndex].id] ? (
+                    <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl">
+                      <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">
+                        {formatTime(timerSeconds[recipe.steps[currentStepIndex].id] || 0)}
+                      </div>
+                      <button
+                        onClick={() => stopTimer(recipe.steps[currentStepIndex].id)}
+                        className="px-8 py-4 bg-red-500 hover:bg-red-600 text-white rounded-full text-xl font-bold"
+                      >
+                        タイマー停止
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() =>
+                        startTimer(recipe.steps[currentStepIndex].id, recipe.steps[currentStepIndex].timer!)
+                      }
+                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center text-xl font-bold"
+                    >
+                      <Timer className="h-7 w-7 mr-2" />
+                      {Math.floor(recipe.steps[currentStepIndex].timer! / 60)}分
+                      {recipe.steps[currentStepIndex].timer! % 60 > 0
+                        ? `${recipe.steps[currentStepIndex].timer! % 60}秒`
+                        : ""}
+                      のタイマーをセット
+                    </button>
+                  )}
                 </div>
               )}
 
-              <div className="p-4">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-lg font-medium">
-                    ステップ {step.id}/{recipe.steps.length}
-                  </span>
-                  <button
-                    onClick={() => speakInstruction(step.instruction)}
-                    className={`p-3 rounded-full ${
-                      isSpeaking ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                    aria-label={isSpeaking ? "音声読み上げを停止" : "音声読み上げ"}
-                  >
-                    <Volume2 className="h-6 w-6" />
-                  </button>
-                </div>
-
-                <p className="text-gray-800 text-lg mb-4">{step.instruction}</p>
-
-                {/* タイマー */}
-                {step.timer && (
-                  <div className="mt-2">
-                    {activeTimers[step.id] ? (
-                      <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-700">{formatTime(timerSeconds[step.id] || 0)}</div>
-                        <button
-                          onClick={() => stopTimer(step.id)}
-                          className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg text-lg font-medium"
-                        >
-                          タイマー停止
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => startTimer(step.id, step.timer)}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center text-lg font-medium"
-                      >
-                        <Timer className="h-6 w-6 mr-2" />
-                        {Math.floor(step.timer / 60)}分{step.timer % 60 > 0 ? `${step.timer % 60}秒` : ""}
-                        のタイマーをセット
-                      </button>
-                    )}
-                  </div>
-                )}
+              {/* ナビゲーションボタン */}
+              <div className="flex justify-between mt-8">
+                <button
+                  onClick={goToPrevStep}
+                  disabled={currentStepIndex === 0}
+                  className="px-8 py-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full text-xl font-bold disabled:opacity-50"
+                >
+                  前へ
+                </button>
+                <button
+                  onClick={goToNextStep}
+                  disabled={currentStepIndex === recipe.steps.length - 1}
+                  className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-full text-xl font-bold disabled:opacity-50"
+                >
+                  次へ
+                </button>
               </div>
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* 完了ボタン - 最後までスクロールしたときのみ表示 */}
-        {showCompletionButton && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 animate-in fade-in slide-in-from-bottom">
+        {/* 完了ボタン - 最後のステップを表示しているときのみ表示 */}
+        {currentStepIndex === recipe.steps.length - 1 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 animate-in fade-in slide-in-from-bottom">
             <div className="max-w-md mx-auto">
               <button
                 onClick={finishCooking}
-                className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center text-xl font-medium"
+                className="w-full py-5 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center text-2xl font-bold"
               >
-                <Check className="h-6 w-6 mr-2" />
+                <Check className="h-7 w-7 mr-2" />
                 調理完了
               </button>
             </div>

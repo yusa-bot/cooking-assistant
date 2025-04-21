@@ -10,6 +10,14 @@ export default function SubmitPhotoPage() {
   const recipeId = Number(params.id)
   const router = useRouter()
 
+  // ログインチェックを追加
+  useEffect(() => {
+    const user = localStorage.getItem("user")
+    if (!user) {
+      router.push("/login")
+    }
+  }, [router])
+
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [note, setNote] = useState<string>("")
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false)
@@ -17,8 +25,37 @@ export default function SubmitPhotoPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  // レシピ情報（実際のアプリではAPIから取得）
-  const recipeName = "野菜たっぷり豚肉炒め"
+  // レシピ情報
+  const [recipeName, setRecipeName] = useState<string>("")
+
+  useEffect(() => {
+    const fetchRecipe = async () => {
+      const user = localStorage.getItem("user")
+      if (!user) {
+        router.push("/login")
+        return
+      }
+  
+      const { token } = JSON.parse(user)
+  
+      try {
+        const res = await fetch(`/api/recipes/${recipeId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!res.ok) throw new Error("レシピ情報の取得に失敗")
+        const data = await res.json()
+        setRecipeName(data.name || "レシピ名不明")
+      } catch (err) {
+        console.error("レシピ取得エラー:", err)
+        setRecipeName("レシピ名取得失敗")
+      }
+    }
+  
+    fetchRecipe()
+  }, [recipeId, router])
+  
 
   // カメラを起動する関数
   const startCamera = async () => {
@@ -92,18 +129,39 @@ export default function SubmitPhotoPage() {
   }
 
   // 写真を提出して履歴に保存
-  const submitAndSaveToHistory = () => {
-    // 実際のアプリではAPIに送信
-    console.log({
-      recipeId,
-      photoUrl,
-      note,
-      date: new Date().toISOString(),
-    })
-
-    // 投稿完了画面へ進む
-    router.push(`/recipes/${recipeId}/submission-complete`)
+  const submitAndSaveToHistory = async () => {
+    const user = localStorage.getItem("user")
+    if (!user) {
+      alert("ログインしてください")
+      return
+    }
+  
+    const { token } = JSON.parse(user)
+  
+    try {
+      const res = await fetch(`/api/history`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipeId,
+          photoUrl,
+          note,
+          date: new Date().toISOString(),
+        }),
+      })
+  
+      if (!res.ok) throw new Error("送信失敗")
+  
+      router.push(`/recipes/${recipeId}/submission-complete`)
+    } catch (err) {
+      console.error("送信エラー:", err)
+      alert("送信に失敗しました")
+    }
   }
+  
 
   // コンポーネントがマウントされたときにカメラを自動起動
   useEffect(() => {
@@ -134,16 +192,10 @@ export default function SubmitPhotoPage() {
 
       <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
         <div className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-md mb-6 p-4">
-          <h2 className="text-xl font-medium mb-2">おめでとうございます！</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            「{recipeName}」の調理が完了しました。完成した料理の写真を撮って履歴に保存しましょう。
-          </p>
+          <h2 className="text-xl font-medium mb-2">料理完成おめでとう！</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">完成した「{recipeName}」の写真を撮りましょう</p>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              完成した料理の写真 <span className="text-red-500">*</span>
-            </label>
-
             <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden mb-2 relative">
               {photoUrl ? (
                 // 撮影した写真のプレビュー
@@ -171,7 +223,7 @@ export default function SubmitPhotoPage() {
               <div className="flex justify-center mt-4">
                 <button
                   onClick={capturePhoto}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center text-lg font-medium"
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center text-lg font-medium"
                   disabled={!isCameraActive}
                 >
                   <Camera className="h-5 w-5 mr-2" />
@@ -185,7 +237,7 @@ export default function SubmitPhotoPage() {
               <div className="flex justify-center mt-4">
                 <button
                   onClick={retakePhoto}
-                  className="px-6 py-3 border border-gray-300 hover:bg-gray-100 rounded-lg flex items-center justify-center text-lg font-medium"
+                  className="px-6 py-3 border border-gray-300 hover:bg-gray-100 rounded-full flex items-center justify-center text-lg font-medium"
                 >
                   <Camera className="h-5 w-5 mr-2" />
                   撮り直す
@@ -195,16 +247,13 @@ export default function SubmitPhotoPage() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              メモ（任意）
-            </label>
             <textarea
               id="note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               rows={3}
-              placeholder="料理についてのメモを書いてください"
+              placeholder="メモを書く（任意）"
             />
           </div>
 
@@ -212,7 +261,7 @@ export default function SubmitPhotoPage() {
             <button
               onClick={showSubmitConfirmation}
               disabled={!photoUrl}
-              className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md flex items-center justify-center text-lg font-medium"
+              className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-full flex items-center justify-center text-lg font-medium"
             >
               <Save className="h-5 w-5 mr-2" />
               履歴へ保存

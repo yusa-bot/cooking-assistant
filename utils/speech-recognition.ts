@@ -1,6 +1,3 @@
-// Web Speech APIを使用した音声認識機能
-
-// 音声認識の結果を処理するコールバック関数の型
 type RecognitionCallback = (text: string) => void
 
 // 音声認識の状態を管理するクラス

@@ -30,34 +30,26 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError("")
-
-    // 入力検証
-    if (!loginEmail || !loginPassword) {
-      setLoginError("メールアドレスとパスワードを入力してください")
-      return
-    }
+    setIsLoggingIn(true)
 
     try {
-      setIsLoggingIn(true)
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      })
+      const data = await res.json()
 
-      // 実際のアプリではAPIを呼び出してログイン処理を行う
-      // ここではモックのログイン処理
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      if (!res.ok) throw new Error(data.message || "ログインに失敗しました")
 
-      // ログイン成功
-      const user = {
-        email: loginEmail,
-        username: loginEmail.split("@")[0], // メールアドレスからユーザー名を生成
-      }
-
-      // ローカルストレージにユーザー情報を保存
-      localStorage.setItem("user", JSON.stringify(user))
-
-      // ホーム画面に戻る
+      localStorage.setItem("user", JSON.stringify({
+        email: data.email,
+        username: data.username,
+        token: data.token,
+      }))
       router.push("/")
-    } catch (error) {
-      console.error("ログインエラー:", error)
-      setLoginError("ログインに失敗しました。もう一度お試しください。")
+    } catch (err: any) {
+      setLoginError("ログイン失敗: " + err.message)
     } finally {
       setIsLoggingIn(false)
     }
@@ -65,48 +57,42 @@ export default function LoginPage() {
 
   // 新規登録処理
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setRegisterError("")
-
-    // 入力検証
-    if (!registerUsername || !registerEmail || !registerPassword) {
-      setRegisterError("すべての項目を入力してください")
-      return
-    }
-
-    if (registerPassword !== registerConfirmPassword) {
-      setRegisterError("パスワードが一致しません")
-      return
-    }
-
-    if (registerPassword.length < 6) {
-      setRegisterError("パスワードは6文字以上で入力してください")
-      return
-    }
-
-    try {
+    const handleRegister = async (e: React.FormEvent) => {
+      e.preventDefault()
+      setRegisterError("")
       setIsRegistering(true)
-
-      // 実際のアプリではAPIを呼び出して新規登録処理を行う
-      // ここではモックの登録処理
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // 登録成功
-      const user = {
-        email: registerEmail,
-        username: registerUsername,
+  
+      if (registerPassword !== registerConfirmPassword) {
+        setRegisterError("パスワードが一致しません")
+        setIsRegistering(false)
+        return
       }
-
-      // ローカルストレージにユーザー情報を保存
-      localStorage.setItem("user", JSON.stringify(user))
-
-      // ホーム画面に戻る
-      router.push("/")
-    } catch (error) {
-      console.error("登録エラー:", error)
-      setRegisterError("登録に失敗しました。もう一度お試しください。")
-    } finally {
-      setIsRegistering(false)
+  
+      try {
+        const res = await fetch("/api/auth", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: registerEmail,
+            password: registerPassword,
+            username: registerUsername,
+          })
+        })
+        const data = await res.json()
+  
+        if (!res.ok) throw new Error(data.message || "登録に失敗しました")
+  
+        localStorage.setItem("user", JSON.stringify({
+          email: data.email,
+          username: data.username,
+          token: data.token,
+        }))
+        router.push("/")
+      } catch (err: any) {
+        setRegisterError("登録失敗: " + err.message)
+      } finally {
+        setIsRegistering(false)
+      }
     }
   }
 

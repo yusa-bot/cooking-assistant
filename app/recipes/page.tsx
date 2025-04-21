@@ -1,9 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { ArrowLeft, Clock, ChevronRight } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import RecipePopup from "@/components/recipe-popup"
+
+interface RecipeStep {
+  instruction: string
+}
 
 // レシピの型定義
 interface Recipe {
@@ -13,51 +18,52 @@ interface Recipe {
   cookingTime: string
   difficulty: string
   imageUrl: string
+  steps: RecipeStep[]
 }
 
 export default function RecipesPage() {
   const router = useRouter()
+  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
 
-  // AIが生成したレシピのリスト（実際のアプリではAPIから取得）
-  const [recipes] = useState<Recipe[]>([
-    {
-      id: 1,
-      name: "野菜たっぷり豚肉炒め",
-      description: "キャベツ、にんじん、玉ねぎを使った栄養満点の一品。甘辛い味付けで食欲アップ！",
-      cookingTime: "20分",
-      difficulty: "簡単",
-      imageUrl: "/stir-fry-vegetables.jpg",
-    },
-    {
-      id: 2,
-      name: "具沢山野菜スープ",
-      description: "たっぷりの野菜を使ったヘルシーなスープ。体に優しい味わいです。",
-      cookingTime: "30分",
-      difficulty: "簡単",
-      imageUrl: "/vegetable-soup.jpg",
-    },
-    {
-      id: 3,
-      name: "豚肉と野菜の蒸し料理",
-      description: "素材の旨味を活かした蒸し料理。ヘルシーながらも満足感のある一皿。",
-      cookingTime: "25分",
-      difficulty: "普通",
-      imageUrl: "/steamed-pork-vegetables.jpg",
-    },
-    {
-      id: 4,
-      name: "野菜たっぷりオムレツ",
-      description: "彩り豊かな野菜を卵で包んだ栄養満点の朝食やブランチにぴったりの一品。",
-      cookingTime: "15分",
-      difficulty: "簡単",
-      imageUrl: "/vegetable-omelette.jpg",
-    },
-  ])
+  useEffect(() => {
+    const user = localStorage.getItem("user")
+    if (!user) {
+      router.push("/login")
+      return
+    }
+    const { token } = JSON.parse(user)
 
-  // 調理を開始する
-  const startCooking = (recipeId: number) => {
-    router.push(`/recipes/${recipeId}/steps`)
-  }
+    const fetchRecipes = async () => {
+      const res = await fetch("/api/recipes", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await res.json()
+      setRecipes(data)
+    }
+    fetchRecipes()
+  }, [router])
+
+  useEffect(() => {
+    if (selectedRecipeId === null) return
+    const user = localStorage.getItem("user")
+    if (!user) return
+    const { token } = JSON.parse(user)
+
+    const fetchRecipe = async () => {
+      const res = await fetch(`/api/recipes/${selectedRecipeId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await res.json()
+      setSelectedRecipe(data)
+    }
+    fetchRecipe()
+  }, [selectedRecipeId])
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
@@ -80,15 +86,9 @@ export default function RecipesPage() {
           {recipes.map((recipe) => (
             <div
               key={recipe.id}
-              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setSelectedRecipe(recipe)}
             >
-              <div className="aspect-[16/9] w-full overflow-hidden">
-                <img
-                  src={recipe.imageUrl || "/placeholder.svg"}
-                  alt={recipe.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
               <div className="p-4">
                 <h2 className="text-xl font-medium">{recipe.name}</h2>
                 <p className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{recipe.description}</p>
@@ -98,13 +98,6 @@ export default function RecipesPage() {
                   <span className="mx-2">•</span>
                   <span>{recipe.difficulty}</span>
                 </div>
-                <button
-                  onClick={() => startCooking(recipe.id)}
-                  className="mt-4 w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center justify-center"
-                >
-                  調理を始める
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </button>
               </div>
             </div>
           ))}
@@ -118,6 +111,15 @@ export default function RecipesPage() {
           </div>
         )}
       </div>
+      {selectedRecipe && (
+        <RecipePopup
+        recipe={selectedRecipe}
+        onClose={() => {
+          setSelectedRecipe(null)
+          setSelectedRecipeId(null)
+        }}
+      />
+    )}
     </main>
   )
 }
