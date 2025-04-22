@@ -1,3 +1,20 @@
+type Recipe = {
+    id: string;
+    title: string;
+    description: string;
+    ingredients: Array<{
+        name: string;
+        amount: number;
+        unit: string;
+    }>;
+    steps: Array<{
+        instruction: string;
+        step_number: number;
+        timer?: string;
+    }>;
+};
+
+
 export async function GET(request: Request) {
     return Response.json({
         recipes: [
