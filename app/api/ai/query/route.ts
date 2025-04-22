@@ -3,8 +3,8 @@ export async function POST(request: Request) {
     console.log(body);
     //openaiapiを叩き、質問への回答を生成
     return Response.json({
-        response: "スパゲッティ・カルボナーラは、卵、チーズ、パンチェッタと黒胡椒を使った伝統的なイタリアンパスタ料理です。";
-        timer?:{
+        response: "スパゲッティ・カルボナーラは、卵、チーズ、パンチェッタと黒胡椒を使った伝統的なイタリアンパスタ料理です。",
+        timer:{
             minutes:"10:00"
         }
     })
