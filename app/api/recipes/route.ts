@@ -40,4 +40,30 @@ export async function GET(request: Request) {
     })
 }
 
-)
+export async function POST(request: Request) {
+    try {
+        const body = await request.json();
+        console.log(body);
+        
+        // ここでレシピの保存処理などを行う
+        
+        // 成功レスポンスを返す
+        return new Response(JSON.stringify({
+            success: true,
+            message: "レシピが正常に作成されました",
+            recipeId: "新しいID" 
+        }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (error) {
+        // エラーレスポンスを返す
+        return new Response(JSON.stringify({
+            success: false,
+            message: "レシピの作成に失敗しました"
+        }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
