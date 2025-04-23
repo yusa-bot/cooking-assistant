@@ -1,20 +1,24 @@
-import { revalidatePath } from "next/cache";
-import {redirect} from "next/navigation";
-
+import { NextResponse } from 'next/server';
 import { createClient } from "@/utils/supabase/server";
 
-export async function POST(request:Request){
+export async function POST(request: Request) {
     const supabase = await createClient();
-
     const body = await request.json();
 
     const { data, error } = await supabase.auth.signUp({
         email: body.email,
         password: body.password,
     });
+
     if (error) {
-        redirect("/auth/signup");
+        return NextResponse.json({ 
+            success: false,
+            error: error.message 
+        }, { status: 400 });
     }
-    revalidatePath("/","layout");
-    redirect("/")
+
+    return NextResponse.json({ 
+        success: true,
+        data 
+    });
 }
