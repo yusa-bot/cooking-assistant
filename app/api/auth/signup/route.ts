@@ -8,6 +8,11 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.auth.signUp({
         email: body.email,
         password: body.password,
+        options: {
+            data: {
+                full_name: body.userName,  
+            },
+        },
     });
 
     if (error) {
