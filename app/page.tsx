@@ -28,6 +28,12 @@ interface CookingHistory {
   recipeName: string // ← recipe_name
 }
 
+interface User {
+  id: string
+  email: string
+  userName?: string
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -35,22 +41,43 @@ export default function Dashboard() {
   const [cookingHistory, setCookingHistory] = useState<CookingHistory[]>([])
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginFeature, setLoginFeature] = useState("この機能")
+  const [user,setUser] = useState<User>()
 
   // ログイン状態と履歴を確認
   useEffect(() => {
-    // ローカルストレージからユーザー情報を取得
-    const user = localStorage.getItem("user")
-    if (user) {
-      const userData = JSON.parse(user)
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      
+      if (!res.ok) {
+        setIsLoggedIn(false)
+        setUsername("")
+        return
+      }
+      const data = await res.json()
+      console.log(data)
+      if (data.user) {
+        setIsLoggedIn(true)
+        setUsername(data.user.userName || "")
+      } else {
+        setIsLoggedIn(false)
+        setUsername("")
+      }
+    }
+    fetchUser()
+  },[])
+    
+  useEffect(() => {
+    if (!user) return
+      const userData = user as User
       setIsLoggedIn(true)
-      setUsername(userData.username || "")
+      setUsername(userData.userName || "")
 
       // ログイン済みの場合、履歴データを取得
       const fetchHistory = async () => {
         try {
           const res = await fetch("/api/recipes", {
             headers: {
-              Authorization: `Bearer ${userData.token}`,
+              Authorization: `Bearer ${userData.id}`,
             },
           })
           if (!res.ok) throw new Error("履歴取得に失敗")
@@ -63,8 +90,8 @@ export default function Dashboard() {
       }
 
       fetchHistory()
-    }
-  }, [])
+    
+  }, [user]);
 
   // ログアウト処理
   const handleLogout = () => {

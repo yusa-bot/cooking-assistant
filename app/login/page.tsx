@@ -33,23 +33,21 @@ export default function LoginPage() {
     setIsLoggingIn(true)
 
     try {
-      const res = await fetch("/api/auth", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword })
       })
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.message || "ログインに失敗しました")
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "ログインに失敗しました")
+      }
 
-      localStorage.setItem("user", JSON.stringify({
-        email: data.email,
-        username: data.username,
-        token: data.token,
-      }))
+      // Login successful, redirect to home page
       router.push("/")
     } catch (err: any) {
-      setLoginError("ログイン失敗: " + err.message)
+      setLoginError(`ログイン失敗: ${err.message}`)
     } finally {
       setIsLoggingIn(false)
     }
@@ -57,42 +55,40 @@ export default function LoginPage() {
 
   // 新規登録処理
   const handleRegister = async (e: React.FormEvent) => {
-    const handleRegister = async (e: React.FormEvent) => {
-      e.preventDefault()
-      setRegisterError("")
-      setIsRegistering(true)
-  
-      if (registerPassword !== registerConfirmPassword) {
-        setRegisterError("パスワードが一致しません")
-        setIsRegistering(false)
-        return
-      }
-  
-      try {
-        const res = await fetch("/api/auth", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: registerEmail,
-            password: registerPassword,
-            username: registerUsername,
-          })
+    e.preventDefault()
+    setRegisterError("")
+    setIsRegistering(true)
+
+    if (registerPassword !== registerConfirmPassword) {
+      setRegisterError("パスワードが一致しません")
+      setIsRegistering(false)
+      return
+    }
+
+    try {
+      const res = await fetch("/api/auth/signup", { // Use correct signup endpoint
+        method: "POST", // Use POST method
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: registerEmail,
+          password: registerPassword,
+          userName: registerUsername, // Corrected field name to match API expectation
         })
-        const data = await res.json()
-  
-        if (!res.ok) throw new Error(data.message || "登録に失敗しました")
-  
-        localStorage.setItem("user", JSON.stringify({
-          email: data.email,
-          username: data.username,
-          token: data.token,
-        }))
-        router.push("/")
-      } catch (err: any) {
-        setRegisterError("登録失敗: " + err.message)
-      } finally {
-        setIsRegistering(false)
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.success) { // Check response status and success flag
+        throw new Error(data.error || "登録に失敗しました")
       }
+
+      // Registration successful, redirect to home page (or maybe login tab)
+      // Consider automatically logging in the user or showing a success message
+      // For now, just redirecting to home
+      router.push("/")
+    } catch (err: any) {
+      setRegisterError(`登録失敗: ${err.message}`) // Update error message format
+    } finally {
+      setIsRegistering(false)
     }
   }
 
