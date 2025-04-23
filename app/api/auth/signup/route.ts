@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 export async function POST(request: Request) {
     const supabase = await createClient();
     const body = await request.json();
-
+    console.log(body);
     const { data, error } = await supabase.auth.signUp({
         email: body.email,
         password: body.password,
