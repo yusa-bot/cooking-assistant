@@ -10,5 +10,5 @@ export async function GET() {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
   
-  return NextResponse.json({ user: { id: user.id, email: user.email,user } })
+  return NextResponse.json({ user: { id: user.id, email: user.email,userName:user.user_metadata.full_name } },{status:200})
 }
