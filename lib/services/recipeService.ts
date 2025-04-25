@@ -2,28 +2,46 @@ import { createClient } from '@/utils/supabase/server'
 import { RecipeTypes } from '@/types/recipeTypes'
 
 
-export async function getAllRecipes() {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(`*, recipe_ingredients (*), recipe_steps (*)`)
-    .order('created_at', { ascending: false })
+export async function getAllRecipes(): Promise<RecipeTypes[]> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('recipes')
+        .select(`*, recipe_ingredients (*), recipe_steps (*)`)
+        .order('created_at', { ascending: false })
 
-  if (error) throw new Error(error.message)
-  return data
+    if (error) throw new Error(error.message)
+    const recipesFromDatabase:RecipeTypes[] = data.map(recipe => ({
+
+        ...recipe,
+        ingredients: recipe.recipe_ingredients,
+        steps: recipe.recipe_steps,
+    }))
+
+    return recipesFromDatabase
 }
 
-export async function getRecipeById(reciepeId: string) { 
+export async function getRecipeById(reciepeId: string): Promise<RecipeTypes> { 
     
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(`*, recipe_ingredients (*), recipe_steps (*)`)
-    .eq('id', reciepeId)
-    .single()
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('recipes')
+        .select(`*, recipe_ingredients (*), recipe_steps (*)`)
+        .eq('id', reciepeId)
+        .single()
 
-  if (error) throw new Error(error.message)
-  return data
+    if (error) throw new Error(error.message)
+    const recipeFromDatabase: RecipeTypes = {
+        id: data.id,
+        title: data.title,
+        description: data.description ?? undefined,
+        photo_url: data.photo_url ?? undefined,
+        is_favorite: data.is_favorite,
+        ingredients: data.recipe_ingredients,
+        steps: data.recipe_steps,
+      }
+    
+
+    return recipeFromDatabase
 }
 
 export async function createRecipe(input: RecipeTypes) {

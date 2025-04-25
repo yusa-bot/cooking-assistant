@@ -1,9 +1,10 @@
 import {getRecipeById} from '@/lib/services/recipeService'
+import { RecipeTypes } from '@/types/recipeTypes';
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {    
     const recipeId = params.id
     try {
-        const  data = await getRecipeById(recipeId);
+        const  data:RecipeTypes = await getRecipeById(recipeId);
         return new Response(JSON.stringify(data), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }, 
