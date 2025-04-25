@@ -1,22 +1,29 @@
-export interface Ingredient {
+export interface IngredientTypes {
     name: string;
     amount: string;
     unit: string;
 }
 
-export interface Step {    
+export interface StepTypes {    
     instruction: string;
     step_number: number;
     timer?: string;
 }
 
-export interface Recipe {
+export interface RecipeTypes {
     id?: string;
     title:string;
     description?: string;
-    ingredients: Ingredient[];
-    steps: Step[];   
+    ingredients: IngredientTypes[];
+    steps: StepTypes[];   
     photo_url?: string;
     is_favorite: boolean;   
 }
 
+
+export interface GeneratedRecipeTypes{
+    key:number;
+    title: string;
+    ingredients: IngredientTypes[];
+    steps: StepTypes[];
+}

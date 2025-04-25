@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import { Recipe } from '@/types/recipeTypes'
+import { RecipeTypes } from '@/types/recipeTypes'
 
 
 export async function getAllRecipes() {
@@ -26,7 +26,7 @@ export async function getRecipeById(reciepeId: string) {
   return data
 }
 
-export async function createRecipe(input: Recipe) {
+export async function createRecipe(input: RecipeTypes) {
   const supabase = await createClient()
   
   // レシピ本体を作成
