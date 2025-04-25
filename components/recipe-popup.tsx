@@ -1,18 +1,10 @@
 "use client"
 
 import { X } from "lucide-react"
+import { RecipeTypes } from "@/types/recipeTypes"
 
 interface RecipePopupProps {
-  recipe: {
-    id: string
-    title: string
-    imageUrl?: string
-    description: string
-    ingredients?: { name: string; amount: number; unit: string }[]
-    steps?: { instruction: string }[]
-    date?: string
-    difficulty?: string
-  }
+  recipe: RecipeTypes
   onClose: () => void
   onStartCooking: () => void
 }
@@ -33,10 +25,9 @@ export default function RecipePopup({ recipe, onClose, onStartCooking }: RecipeP
 
         <p className="text-gray-600 dark:text-gray-300 mb-4">{recipe.description}</p>
 
-        {(recipe.date || recipe.difficulty) && (
+        {(recipe.created_at ) && (
           <div className="flex items-center mb-4 text-sm text-gray-500">
-            {recipe.date && <span className="mr-2">調理時間: {recipe.date}</span>}
-            {recipe.difficulty && <span>難易度: {recipe.difficulty}</span>}
+            {recipe.created_at && <span className="mr-2">調理時間: {recipe.created_at}</span>}            
           </div>
         )}
 

@@ -17,7 +17,8 @@ export interface RecipeTypes {
     ingredients: IngredientTypes[];
     steps: StepTypes[];   
     photo_url?: string;
-    is_favorite: boolean;   
+    is_favorite: boolean;
+    created_at?: string;   
 }
 
 
