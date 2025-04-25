@@ -54,74 +54,74 @@ export default function Home() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [user,setUser] = useState<User>()
 
-    // ログイン状態と履歴を確認
-    useEffect(() => {
-      const fetchUser = async () => {
-        const res = await fetch("/api/auth/user")
-        
-        if (!res.ok) {
-          setIsLoggedIn(false)
-          setUsername("")
-          return
-        }
-        const data = await res.json()
-        console.log(data)
-        if (data.user) {
-          setIsLoggedIn(true)
-          setUsername(data.user.userName || "")
-        } else {
-          setIsLoggedIn(false)
-          setUsername("")
-        }
+  // ログイン状態と履歴を確認
+  useEffect(() => {
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
+        setIsLoggedIn(false)
+        setUsername("")
+        return
       }
-      fetchUser()
-    },[])
       
-    useEffect(() => {
-      if (!user) return
-        const userData = user as User
+      const data = await res.json()
+      console.log(data)
+      if (data.user) {
         setIsLoggedIn(true)
-        setUsername(userData.userName || "")
-  
-        // ログイン済みの場合、履歴データを取得
-        const fetchHistory = async () => {
-          try {
-            const res = await fetch("/api/recipes", {
-              headers: {
-                Authorization: `Bearer ${userData.id}`,
-              },
-            })
-            if (!res.ok) throw new Error("履歴取得に失敗")
+        setUsername(data.user.userName || "")
+      } else {
+        setIsLoggedIn(false)
+        setUsername("")
+      }
+    }
+    fetchUser()
+  },[])
+      
+  useEffect(() => {
+    if (!user) return
+      const userData = user as User
+      setIsLoggedIn(true)
+      setUsername(userData.userName || "")
 
-            const data: ApiResponse = await res.json()
-            setCookingHistory(data.recipes)
-          } catch (err) {
-            console.error("履歴の取得エラー:", err)
-            setCookingHistory([])
-          }
-        }
-        fetchHistory()
-
-      //れしぴ用に変える
-      // ログイン済みの場合、レシピ帳データを取得
-      const fetchFavorite = async () => {
+      // ログイン済みの場合、履歴データを取得
+      const fetchHistory = async () => {
         try {
           const res = await fetch("/api/recipes", {
             headers: {
               Authorization: `Bearer ${userData.id}`,
             },
           })
-          if (!res.ok) throw new Error("レシピ帳取得に失敗")
-            const data: ApiResponse = await res.json()
-          setFavoriteRecipes(data.recipes)
+          if (!res.ok) throw new Error("履歴取得に失敗")
+
+          const data: ApiResponse = await res.json()
+          setCookingHistory(data.recipes)
         } catch (err) {
-          console.error("レシピ帳の取得エラー:", err)
-          setFavoriteRecipes([])
+          console.error("履歴の取得エラー:", err)
+          setCookingHistory([])
         }
       }
-      fetchFavorite()
+      fetchHistory()
+
+    //れしぴ用に変える
+    // ログイン済みの場合、レシピ帳データを取得
+    const fetchFavorite = async () => {
+      try {
+        const res = await fetch("/api/recipes", {
+          headers: {
+            Authorization: `Bearer ${userData.id}`,
+          },
+        })
+        if (!res.ok) throw new Error("レシピ帳取得に失敗")
+        const data: ApiResponse = await res.json()
+        setFavoriteRecipes(data.recipes)
+      } catch (err) {
+        console.error("レシピ帳の取得エラー:", err)
+        setFavoriteRecipes([])
+      }
+    }
+    fetchFavorite()
       
-    }, [user]);
+  }, [user]);
   
 
 

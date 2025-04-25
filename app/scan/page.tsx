@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Camera, ImageIcon, RefreshCw } from "lucide-react"
 import Link from "next/link"
@@ -11,6 +10,7 @@ import LoginPromptModal from "@/components/login-prompt-modal"
 export default function ScanPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
+  // <HTMLVideoElement> で「参照したいのは <video> タグですよ」
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -20,14 +20,26 @@ export default function ScanPage() {
 
   // ログインチェック
   useEffect(() => {
-    const user = localStorage.getItem("user")
-    if (user) {
-      setIsLoggedIn(true)
-      startCamera()
-    } else {
-      setShowLoginModal(true)
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
+        setIsLoggedIn(false)
+        return
+      }
+      
+      const data = await res.json()
+      console.log(data)
+      if (data.user) {
+        setIsLoggedIn(true)
+        startCamera()
+      } else {
+        setIsLoggedIn(false)
+        setShowLoginModal(true)
+      }
     }
-  }, [])
+    fetchUser()
+  },[])
+
 
   // カメラを起動する関数
   const startCamera = async () => {
@@ -67,46 +79,17 @@ export default function ScanPage() {
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
 
-      // ビデオフレームをキャンバスに描画
+      // videoをcanvas(静止画)に描画
       context?.drawImage(video, 0, 0, canvas.width, canvas.height)
 
       // キャンバスの内容を画像URLとして取得
-      const imageUrl = canvas.toDataURL("image/jpeg")
+      const imageUrl = canvas.toDataURL("image/jpeg") //Base64形式に変換
       setCapturedImage(imageUrl)
 
       // カメラを停止
       stopCamera()
     }
   }
-
-  const uploadPhotoToServer = async () => {
-    const user = localStorage.getItem("user")
-    if (!user || !capturedImage) return
-
-    const { token } = JSON.parse(user)
-
-    try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ image: capturedImage })
-      })
-
-      if (!res.ok) throw new Error("画像アップロードに失敗しました")
-
-      const result = await res.json()
-      console.log("アップロード成功:", result)
-
-      router.push("/ingredients")
-    } catch (err) {
-      console.error(err)
-      alert("画像の送信に失敗しました")
-    }
-  }
-
 
   // 写真を再撮影する関数
   const retakePhoto = () => {
@@ -126,11 +109,11 @@ export default function ScanPage() {
     const file = event.target.files?.[0]
     if (file) {
       const reader = new FileReader()
-      reader.onload = (e) => {
+      reader.onload = (e) => { //非同期
         setCapturedImage(e.target?.result as string)
         stopCamera()
       }
-      reader.readAsDataURL(file)
+      reader.readAsDataURL(file) //Base64に変換
     }
   }
 
@@ -187,7 +170,7 @@ export default function ScanPage() {
             <>
               <button
                 onClick={capturePhoto}
-                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md w-full"
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full"
                 disabled={!isCameraActive}
               >
                 <Camera className="mr-3 h-6 w-6" />
@@ -196,7 +179,7 @@ export default function ScanPage() {
 
               <button
                 onClick={openFileSelector}
-                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
               >
                 <ImageIcon className="mr-3 h-6 w-6" />
                 画像をアップロード
@@ -206,7 +189,7 @@ export default function ScanPage() {
             <>
               <button
                 onClick={retakePhoto}
-                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
               >
                 <RefreshCw className="mr-3 h-6 w-6" />
                 撮り直す
@@ -214,7 +197,7 @@ export default function ScanPage() {
 
               <button
                 onClick={() => router.push("/ingredients")}
-                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md w-full"
+                className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full"
               >
                 材料を確認
               </button>

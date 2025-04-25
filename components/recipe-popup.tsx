@@ -1,29 +1,23 @@
 "use client"
 
 import { X } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 interface RecipePopupProps {
   recipe: {
-    id: number
-    name: string
+    id: string
+    title: string
+    imageUrl?: string
     description: string
-    cookingTime: string
-    difficulty: string
-    imageUrl: string
+    ingredients?: { name: string; amount: number; unit: string }[]
     steps?: { instruction: string }[]
+    date?: string
+    difficulty?: string
   }
   onClose: () => void
+  onStartCooking: () => void
 }
 
-export default function RecipePopup({ recipe, onClose }: RecipePopupProps) {
-  const router = useRouter()
-
-  // 調理を開始する
-  const startCooking = (recipeId: number) => {
-    router.push(`/recipes/${recipeId}/steps`)
-  }
-
+export default function RecipePopup({ recipe, onClose, onStartCooking }: RecipePopupProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
       <div
@@ -31,13 +25,20 @@ export default function RecipePopup({ recipe, onClose }: RecipePopupProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">{recipe.name}</h2>
+          <h2 className="text-xl font-bold">{recipe.title}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <p className="text-gray-600 dark:text-gray-300 mb-4">{recipe.description}</p>
+
+        {(recipe.date || recipe.difficulty) && (
+          <div className="flex items-center mb-4 text-sm text-gray-500">
+            {recipe.date && <span className="mr-2">調理時間: {recipe.date}</span>}
+            {recipe.difficulty && <span>難易度: {recipe.difficulty}</span>}
+          </div>
+        )}
 
         <div className="mb-6">
           <h3 className="font-bold mb-2">調理手順</h3>
@@ -51,7 +52,7 @@ export default function RecipePopup({ recipe, onClose }: RecipePopupProps) {
         </div>
 
         <button
-          onClick={() => startCooking(recipe.id)}
+          onClick={onStartCooking}
           className="w-full py-4 bg-green-600 hover:bg-green-700 text-white text-lg font-bold rounded-full flex items-center justify-center"
         >
           調理を始める
@@ -60,3 +61,42 @@ export default function RecipePopup({ recipe, onClose }: RecipePopupProps) {
     </div>
   )
 }
+
+
+// export default function RecipePopup({ recipe, onClose, onStartCooking }: RecipePopupProps) {
+//   return (
+//     // ポップアップ画面閉開
+//     <div onClick={onClose}>
+//       <div onClick={(e) => e.stopPropagation()}>
+
+//         <div>
+//           <h2>{recipe.name}</h2>
+//           <button onClick={onClose}> <X/> </button>
+//         </div>
+
+//         <p>{recipe.description}</p>
+
+//         {(recipe.cookingTime || recipe.difficulty) && (
+//           <div>
+//             {recipe.cookingTime && <span>調理時間: {recipe.cookingTime}</span>}
+//             {recipe.difficulty && <span>難易度: {recipe.difficulty}</span>}
+//           </div>
+//         )}
+
+//         <div>
+//           <h3>調理手順</h3>
+//           <ol>
+//             {recipe.steps?.map((step, index) => (
+//               <li key={index}>
+//                 {step.instruction}
+//               </li>
+//             ))}
+//           </ol>
+//         </div>
+
+//         <button onClick={onStartCooking}>調理を始める</button>
+
+//       </div>
+//     </div>
+//   )
+// }

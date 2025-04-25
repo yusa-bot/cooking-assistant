@@ -6,19 +6,38 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
 
-interface RecipeStep {
-  instruction: string
+interface User {
+  id: string
+  email: string
+  userName?: string
 }
 
-// レシピの型定義
-interface Recipe {
-  id: number
+interface Ingredient {
   name: string
+  amount: number
+  unit: string
+}
+
+interface Step {
+  instruction: string
+  step_number: number
+  timer?: string
+}
+
+interface Recipe {
+  id: string
+  title: string
+  imageUrl?: string
   description: string
-  cookingTime: string
-  difficulty: string
-  imageUrl: string
-  steps: RecipeStep[]
+  ingredients?: Ingredient[]
+  steps?: Step[]
+  date: string
+  difficulty?: string
+  cookingTime?: string
+}
+
+interface ApiResponse {
+  recipes: Recipe[]
 }
 
 export default function RecipesPage() {
@@ -26,44 +45,50 @@ export default function RecipesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [token, setToken] = useState<string | null>(null)
+  const [user,setUser] = useState<User>()
+
+  // ログイン
+  useEffect(() => {
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
+        router.push("/login")
+        return
+      }
+
+      const data = await res.json()
+      console.log(data)
+      setToken(data.token)
+      setUser(data.user)
+    }
+    fetchUser()
+  },[router])
 
   useEffect(() => {
-    const user = localStorage.getItem("user")
-    if (!user) {
-      router.push("/login")
-      return
-    }
-    const { token } = JSON.parse(user)
-
+    if (!token) return
     const fetchRecipes = async () => {
-      const res = await fetch("/api/recipes", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      const data = await res.json()
-      setRecipes(data)
+      const res = await fetch("/api/ai/generate")
+      const data: ApiResponse = await res.json()
+      setRecipes(data.recipes || [])
     }
     fetchRecipes()
-  }, [router])
+  }, [])
 
   useEffect(() => {
     if (selectedRecipeId === null) return
-    const user = localStorage.getItem("user")
-    if (!user) return
-    const { token } = JSON.parse(user)
 
-    const fetchRecipe = async () => {
-      const res = await fetch(`/api/recipes/${selectedRecipeId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      const data = await res.json()
-      setSelectedRecipe(data)
+    const fetchRecipe = () => {
+      setSelectedRecipe(setRecipes[selectedRecipeId])
     }
     fetchRecipe()
   }, [selectedRecipeId])
+
+  const startCooking = (recipeId: string) => {
+    // 遷移元を記録
+    localStorage.setItem("recipeSource", "recipes")
+    router.push(`/recipes/${recipeId}/steps`)
+  }
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
@@ -90,7 +115,7 @@ export default function RecipesPage() {
               onClick={() => setSelectedRecipe(recipe)}
             >
               <div className="p-4">
-                <h2 className="text-xl font-medium">{recipe.name}</h2>
+                <h2 className="text-xl font-medium">{recipe.title}</h2>
                 <p className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{recipe.description}</p>
                 <div className="flex items-center mt-3 text-sm text-gray-500 dark:text-gray-400">
                   <Clock className="h-4 w-4 mr-1" />
@@ -113,11 +138,11 @@ export default function RecipesPage() {
       </div>
       {selectedRecipe && (
         <RecipePopup
-        recipe={selectedRecipe}
-        onClose={() => {
-          setSelectedRecipe(null)
-          setSelectedRecipeId(null)
+        recipe={{
+          ...selectedRecipe,
         }}
+        onClose={() => setSelectedRecipe(null)}
+        onStartCooking={() => startCooking(selectedRecipe.id)}
       />
     )}
     </main>

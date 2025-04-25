@@ -19,6 +19,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
         success: true,
-        data 
+        token: data.session?.access_token,
+        refreshToken: data.session?.refresh_token,
+        user: data.user
     });
 }

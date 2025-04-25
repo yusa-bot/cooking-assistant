@@ -1,17 +1,25 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Plus, X, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
 
-export default function IngredientsPage() {
-  // 検出された材料のリスト
-  const [detectedIngredients, setDetectedIngredients] = useState<string[]>([])
+interface User {
+  id: string
+  email: string
+  userName?: string
+}
 
+interface Props {
+  capturedImage: string
+}
+
+export default function IngredientsPage({ capturedImage }: Props) {
+  // 検出された材料のリスト（実際のアプリではAIからの結果を使用）
+  const [detectedIngredients, setDetectedIngredients] = useState<string[]>([])
   // 新しい材料の入力用
   const [newIngredient, setNewIngredient] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -19,43 +27,53 @@ export default function IngredientsPage() {
   const inputRef = useRef<HTMLInputElement>(null)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-
   const router = useRouter()
 
-  // ログインチェック
+  // ログイン
   useEffect(() => {
-    const user = localStorage.getItem("user")
-    if (user) {
-      setIsLoggedIn(true)
-      fetchIngredients()
-    } else {
-      setShowLoginModal(true)
-    }
-  }, [])
-
-  const fetchIngredients = async () => {
-    const user = localStorage.getItem("user")
-    if (!user) return
-
-    const { token } = JSON.parse(user)
-
-    try {
-      const res = await fetch("/api/ai", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!res.ok) throw new Error("材料の取得に失敗しました")
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
+        setIsLoggedIn(false)
+        return
+      }
+      
       const data = await res.json()
-      setDetectedIngredients(data.ingredients || [])
-    } catch (err) {
-      console.error(err)
-      setDetectedIngredients([])
+      console.log(data)
+      if (data.user) {
+        setIsLoggedIn(true)
+      } else {
+        setIsLoggedIn(false)
+        setShowLoginModal(true)
+      }
     }
-  }
+    fetchUser()
+  },[])
 
-  // 食材の候補リスト
+  //材料を推定
+  useEffect(() => {
+    const fetchIngredients = async (base64Image: string) => {
+      try {
+        const res = await fetch("/api/ai/detect", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ image: base64Image })
+        })
+        if (!res.ok) throw new Error("食材取得に失敗")
+
+        const data = await res.json()
+        setDetectedIngredients(data)
+      } catch (err) {
+        console.error("食材の取得エラー:", err)
+        setDetectedIngredients([])
+      }
+    }
+    fetchIngredients(capturedImage)
+}, [capturedImage]);
+
+  // 食材の候補リスト（実際のアプリではもっと多くの候補を用意）
   const ingredientSuggestions = [
     "キャベツ",
     "にんじん",
@@ -199,26 +217,13 @@ export default function IngredientsPage() {
 
   // レシピ提案ページに進む
   const goToRecipes = async () => {
-    const user = localStorage.getItem("user")
-    if (!user) return
-    const { token } = JSON.parse(user)
-
-    try {
-      const res = await fetch("/api/recipes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ingredients: detectedIngredients }),
-      })
-
-      if (!res.ok) throw new Error("レシピ提案送信に失敗しました")
-      router.push("/recipes")
-    } catch (err) {
-      console.error(err)
-      alert("レシピ提案送信に失敗しました")
-    }
+    // 材料リストをAPIに送信 受け取れてるかな？
+    await fetch("/api/recipe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({newIngredient})
+    })
+    router.push("/recipes")
   }
 
   // モーダルを閉じる
@@ -281,12 +286,12 @@ export default function IngredientsPage() {
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder="材料を追加..."
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-full bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <button
                 onClick={() => filteredSuggestions.length > 0 && addIngredient(filteredSuggestions[0])}
                 disabled={filteredSuggestions.length === 0}
-                className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-r-md flex items-center"
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-r-full flex items-center"
               >
                 <Plus className="h-5 w-5" />
               </button>
@@ -313,7 +318,7 @@ export default function IngredientsPage() {
           <button
             onClick={goToRecipes}
             disabled={detectedIngredients.length === 0}
-            className="h-14 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md w-full"
+            className="h-14 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-full w-full"
           >
             レシピ提案へ進む
             <ChevronRight className="ml-2 h-5 w-5" />
