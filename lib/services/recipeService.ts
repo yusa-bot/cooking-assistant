@@ -1,14 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
+import { Recipe } from '@/types/recipeTypes'
 
-export interface RecipeInput {
-  title: string
-  description?: string
-  creator_id?: string
-  ingredients: Array<{ name: string; amount: number; unit: string }>
-  steps: Array<{ instruction: string; step_number: number; timer?: string }>
-  photo_url?: string
-  is_favorite?: boolean
-}
 
 export async function getAllRecipes() {
   const supabase = await createClient()
@@ -34,7 +26,7 @@ export async function getRecipeById(reciepeId: string) {
   return data
 }
 
-export async function createRecipe(input: RecipeInput) {
+export async function createRecipe(input: Recipe) {
   const supabase = await createClient()
   
   // レシピ本体を作成
@@ -42,8 +34,7 @@ export async function createRecipe(input: RecipeInput) {
     .from('recipes')
     .insert({
       title: input.title,
-      description: input.description || null,
-      creator_id: input.creator_id || null,
+      description: input.description || null,      
       photo_url: input.photo_url || null,
       is_favorite: input.is_favorite || false,
     })
