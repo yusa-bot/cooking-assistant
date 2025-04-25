@@ -1,32 +1,12 @@
 "use client"
 
 import type React from "react"
-import { Camera, LogIn, ChefHat, ChevronRight } from "lucide-react"
+import { Camera, LogIn, ChefHat, ChevronRight, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import LoginPromptModal from "@/components/login-prompt-modal"
-
-// interface CookingHistory {
-//   id: number
-//   date: string
-//   recipeName: string
-//   imageUrl: string
-// }
-// hello world
-
-//aa
-
-// 料理履歴の型定義
-interface CookingHistory {
-  id: string         // ← uuid
-  userId: string     // ← user_id
-  recipeId: string   // ← recipe_id
-  photoUrl: string   // ← photo_url
-  isFavorite: boolean // ← is_favorite
-  cookedAt: string    // ← timestamptz（ISO文字列で受け取る）
-  recipeName: string // ← recipe_name
-}
+import RecipePopup from "@/components/recipe-popup"
 
 interface User {
   id: string
@@ -34,64 +14,116 @@ interface User {
   userName?: string
 }
 
-export default function Dashboard() {
+
+interface Ingredient {
+  name: string
+  amount: number
+  unit: string
+}
+
+interface Step {
+  instruction: string
+  step_number: number
+  timer?: string
+}
+
+interface Recipe {
+  id: string
+  title: string
+  imageUrl?: string
+  description: string
+  ingredients?: Ingredient[]
+  steps?: Step[]
+  date: string
+  difficulty?: string
+}
+
+interface ApiResponse {
+  recipes: Recipe[]
+}
+
+
+export default function Home() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState("")
-  const [cookingHistory, setCookingHistory] = useState<CookingHistory[]>([])
+  const [cookingHistory, setCookingHistory] = useState<Recipe[]>([]) //配列
+  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([])
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginFeature, setLoginFeature] = useState("この機能")
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [user,setUser] = useState<User>()
 
-  // ログイン状態と履歴を確認
-  useEffect(() => {
-    const fetchUser = async () => {
-      const res = await fetch("/api/auth/user")
+    // ログイン状態と履歴を確認
+    useEffect(() => {
+      const fetchUser = async () => {
+        const res = await fetch("/api/auth/user")
+        
+        if (!res.ok) {
+          setIsLoggedIn(false)
+          setUsername("")
+          return
+        }
+        const data = await res.json()
+        console.log(data)
+        if (data.user) {
+          setIsLoggedIn(true)
+          setUsername(data.user.userName || "")
+        } else {
+          setIsLoggedIn(false)
+          setUsername("")
+        }
+      }
+      fetchUser()
+    },[])
       
-      if (!res.ok) {
-        setIsLoggedIn(false)
-        setUsername("")
-        return
-      }
-      const data = await res.json()
-      console.log(data)
-      if (data.user) {
+    useEffect(() => {
+      if (!user) return
+        const userData = user as User
         setIsLoggedIn(true)
-        setUsername(data.user.userName || "")
-      } else {
-        setIsLoggedIn(false)
-        setUsername("")
-      }
-    }
-    fetchUser()
-  },[])
-    
-  useEffect(() => {
-    if (!user) return
-      const userData = user as User
-      setIsLoggedIn(true)
-      setUsername(userData.userName || "")
+        setUsername(userData.userName || "")
+  
+        // ログイン済みの場合、履歴データを取得
+        const fetchHistory = async () => {
+          try {
+            const res = await fetch("/api/recipes", {
+              headers: {
+                Authorization: `Bearer ${userData.id}`,
+              },
+            })
+            if (!res.ok) throw new Error("履歴取得に失敗")
 
-      // ログイン済みの場合、履歴データを取得
-      const fetchHistory = async () => {
+            const data: ApiResponse = await res.json()
+            setCookingHistory(data.recipes)
+          } catch (err) {
+            console.error("履歴の取得エラー:", err)
+            setCookingHistory([])
+          }
+        }
+        fetchHistory()
+
+      //れしぴ用に変える
+      // ログイン済みの場合、レシピ帳データを取得
+      const fetchFavorite = async () => {
         try {
           const res = await fetch("/api/recipes", {
             headers: {
               Authorization: `Bearer ${userData.id}`,
             },
           })
-          if (!res.ok) throw new Error("履歴取得に失敗")
-          const data = await res.json()
-          setCookingHistory(data)
+          if (!res.ok) throw new Error("レシピ帳取得に失敗")
+            const data: ApiResponse = await res.json()
+          setFavoriteRecipes(data.recipes)
         } catch (err) {
-          console.error("履歴の取得エラー:", err)
-          setCookingHistory([])
+          console.error("レシピ帳の取得エラー:", err)
+          setFavoriteRecipes([])
         }
       }
+      fetchFavorite()
+      
+    }, [user]);
+  
 
-      fetchHistory()
-    
-  }, [user]);
 
   // ログアウト処理
   const handleLogout = () => {
@@ -116,7 +148,41 @@ export default function Dashboard() {
     setShowLoginModal(false)
   }
 
-  //上記の関数をreturnに反映し、再読み込みして描画する
+  // お気にレシピをクリックしたときの処理
+  const handleRecipeClick = (recipe: Recipe) => {
+    // レシピの詳細情報を設定
+    setSelectedRecipe({
+      id: recipe.id,
+      title: recipe.title,
+      description: recipe.description || "",
+      date: recipe.date || "",
+      difficulty: recipe.difficulty || "",
+      imageUrl: recipe.imageUrl,
+      steps: recipe.steps || []
+    })
+  }
+
+  // 履歴をクリックしたときの処理
+  const handleHistoryClick = (recipe: Recipe) => {
+    // 履歴からレシピの詳細情報を設定
+    setSelectedRecipe({
+      id: recipe.id,
+      title: recipe.title,
+      description: recipe.description || "",
+      date: recipe.date || "",
+      difficulty: recipe.difficulty || "",
+      imageUrl: recipe.imageUrl,
+      steps: recipe.steps || []
+    })
+  }
+
+  // 調理を開始する
+  const startCooking = (recipeId: string, source: string) => {
+    // 遷移元を記録
+    localStorage.setItem("recipeSource", source)
+    router.push(`/recipes/${recipeId}/steps`)
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center p-4 md:p-8 bg-gray-50">
       {/* ヘッダー */}
@@ -127,9 +193,8 @@ export default function Dashboard() {
         </div>
       </header>
 
-
-      <div className="text-green-600 text-center text-sm text-gray-500 mt-4">
-          <p>材料の写真を撮影してAIがレシピを提案します</p>
+      <div className="text-center text-sm text-gray-500 mt-4">
+        <p>材料の写真を撮影してAIがレシピを提案します</p>
       </div>
 
       <div className="flex flex-col items-center justify-center flex-1 w-full max-w-md mx-auto space-y-8 py-4">
@@ -173,6 +238,57 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* レシピ帳セクション */}
+        {isLoggedIn && (
+          <div className="w-full mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">レシピ帳</h2>
+              {favoriteRecipes.length > 0 && (
+                <Link href="/recipe-book" className="text-green-600 flex items-center text-sm">
+                  もっと見る
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
+              )}
+            </div>
+
+            {favoriteRecipes.length > 0 ? (
+              <div className="overflow-x-auto pb-4">
+                <div className="flex space-x-4" style={{ minWidth: "min-content" }}>
+                  {favoriteRecipes.map((recipe) => (
+                    <div
+                      key={recipe.id}
+                      className="flex-shrink-0 w-40 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm cursor-pointer"
+                      onClick={() => handleRecipeClick(recipe)}
+                    >
+                      <div className="aspect-square w-full overflow-hidden">
+                        <img
+                          src={recipe.imageUrl || "/placeholder.svg"}
+                          alt={recipe.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm truncate">{recipe.title}</h3>
+                        <div className="flex items-center mt-1">
+                          <BookOpen className="h-3 w-3 text-green-600 mr-1" />
+                          <span className="text-xs text-green-600">レシピ帳</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : isLoggedIn ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <p className="text-gray-600 mb-2">レシピ帳にはまだ何も追加されていません</p>
+                <Link href="/recipes" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                  レシピを探す
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {/* 料理履歴セクション */}
         <div className="w-full mt-8">
           <div className="flex justify-between items-center mb-4">
@@ -192,18 +308,19 @@ export default function Dashboard() {
                   {cookingHistory.map((item) => (
                     <div
                       key={item.id}
-                      className="flex-shrink-0 w-40 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+                      className="flex-shrink-0 w-40 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm cursor-pointer"
+                      onClick={() => handleHistoryClick(item)}
                     >
                       <div className="aspect-square w-full overflow-hidden">
                         <img
-                          src={item.photoUrl || "/placeholder.svg"}
-                          alt={item.recipeName}
+                          src={item.imageUrl || "/placeholder.svg"}
+                          alt={item.title}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="p-3">
-                        <h3 className="font-medium text-sm truncate">{item.recipeName}</h3>
-                        <p className="text-gray-500 text-xs mt-1">{item.cookedAt}</p>
+                        <h3 className="font-medium text-sm truncate">{item.title}</h3>
+                        <p className="text-gray-500 text-xs mt-1">{item.date}</p>
                       </div>
                     </div>
                   ))}
@@ -223,10 +340,140 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
       </div>
+
+      {/* レシピポップアップ */}
+      {selectedRecipe && (
+        <RecipePopup
+          recipe={selectedRecipe}
+          onClose={() => setSelectedRecipe(null)}
+          onStartCooking={() => startCooking(selectedRecipe.id, "home")}
+        />
+      )}
 
       {/* ログインプロンプトモーダル */}
       <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName={loginFeature} />
     </main>
   )
 }
+
+
+
+
+// return (
+//   <main>
+//     <header>
+//       <div>
+//         <ChefHat/> <h1>AIレシピアシスタント</h1>
+//       </div>
+//     </header>
+
+//     <div> <p>材料の写真を撮影してAIがレシピを提案します</p> </div>
+
+//     <div >
+//       isLoggedInがtrueの時のみ表示
+//       {isLoggedIn && (<div> <p>ようこそ、<span>{username}</span> さん</p> </div>)}
+
+//       <div >
+//         <div>
+//           <div>
+//           ログイン : /scan, 未ログイン : setShowLoginModal
+//             <button onClick={handleScanClick}> <Camera/>材料をスキャンする </button>
+
+//           白い方のボタン
+//             {
+//               isLoggedIn ? (<button onClick={handleLogout}> <LogIn/>ログアウト </button>) 
+//               : 
+//               (<Link href="/login"> <LogIn/>ログイン / 新規登録 </Link>)
+//             }
+
+//           </div>
+//         </div>
+//       </div>
+
+//       <div>
+
+
+//         {/* レシピ帳セクション */}
+//         {isLoggedIn && (
+//           <div>
+
+//             <div>
+//               <h2>レシピ帳</h2>
+//               {favoriteRecipes.length > 0 && ( <Link href="/recipe-book"> もっと見る<ChevronRight/> </Link> )}
+//             </div>
+
+//             {favoriteRecipes.length > 0 ? (
+//               <div>
+//                 <div>
+//                   {favoriteRecipes.map((recipe) => (        set(今このレシピだよと状態を持っておく)
+//                     <div key={recipe.id} onClick={() => handleRecipeClick(recipe)}>
+//                       <div> <img src={recipe.imageUrl} alt={recipe.name}/> </div>
+//                       <div> 
+//                         <h3>{recipe.name}</h3> 
+//                         <BookOpen/><span>レシピ帳</span>
+//                       <div>
+//                       </div>
+//                     </div>
+//                   ))}
+//                 </div>
+//               </div>
+              
+//             ) : isLoggedIn ? (
+//               <div>
+//                 <p>レシピ帳にはまだ何も追加されていません</p>
+//                 <Link href="/recipes">
+//                   レシピを探す
+//                 </Link>
+//               </div>
+//             ) : null}
+//           </div>
+//         )}
+
+
+//         {/* 料理履歴セクション */}
+//         <div>
+//           <h2 >料理履歴</h2>
+//           {isLoggedIn && cookingHistory.length > 0 && (<Link href="/history"> もっと見る<ChevronRight/> </Link>) }
+//         </div>
+
+//         {isLoggedIn ? (cookingHistory.length > 0 ? (
+
+//             <div>
+//               <div>
+//                 {cookingHistory.map((item) => (
+//                   <div key={item.id}>
+//                     <div> <img src={item.photoUrl} alt={item.recipeName} /> </div>
+//                     <div> <h3>{item.recipeName}</h3> <p>{item.cookedAt}</p> </div>
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           ) : (
+//             <div> <p>まだ料理履歴がありません。最初の料理を記録しましょう！</p> </div>
+//           )
+
+//         ) : (
+//           <div>
+//             <p>ログインすると料理履歴を保存できます</p>
+//             <Link href="/login">ログインして履歴を保存する</Link>
+//           </div>
+//         )}
+//       </div>
+//     </div>
+
+//           {/* レシピポップアップ */}
+//        {selectedRecipe && (
+//         <RecipePopup
+//           recipe={selectedRecipe}
+//           onClose={() => setSelectedRecipe(null)}
+//           onStartCooking={() => startCooking(selectedRecipe.id, "home")}
+//         />
+//       )}
+
+// component/login-prompt-modal.tsx
+// 常にtsxにあるけど、login-prompt-modal.tsx内で、isOpenの値によって表示有無が変わる
+//     {/* ログインプロンプトモーダル */}
+//     <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName={loginFeature} />
+//   </main>

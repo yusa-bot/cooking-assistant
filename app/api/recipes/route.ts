@@ -1,7 +1,8 @@
 type Recipe = {
-    id: string;
+    id: number;
     title: string;
     description: string;
+    date: string;
     ingredients: Array<{
         name: string;
         amount: number;
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     return Response.json({
         recipes: [
             {
-                id: "1",
+                id: 1,
                 title: "スパゲッティ・カルボナーラ",
                 description: "卵、チーズ、パンチェッタと黒胡椒を使った伝統的なイタリアンパスタ料理。",
                 ingredients: [
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
                 ]
             },
             {
-                id: "2",
+                id: 2,
                 title: "アボカドトースト",
                 description: "シンプルで栄養価の高い朝食オプション。",
                 ingredients: [
