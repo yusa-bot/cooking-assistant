@@ -6,6 +6,8 @@ export interface RecipeInput {
   creator_id?: string
   ingredients: Array<{ name: string; amount: number; unit: string }>
   steps: Array<{ instruction: string; step_number: number; timer?: string }>
+  photo_url?: string
+  is_favorite?: boolean
 }
 
 export async function getAllRecipes() {
@@ -42,6 +44,8 @@ export async function createRecipe(input: RecipeInput) {
       title: input.title,
       description: input.description || null,
       creator_id: input.creator_id || null,
+      photo_url: input.photo_url || null,
+      is_favorite: input.is_favorite || false,
     })
     .select('id')
     .single()
