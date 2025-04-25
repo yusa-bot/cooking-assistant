@@ -137,7 +137,8 @@ export default function SubmitPhotoPage() {
     }
   
     const { token } = JSON.parse(user)
-  
+    //写真をアップロードするだけにする
+    //他の情報はレシピテーブルに保存する
     try {
       const res = await fetch(`/api/history`, {
         method: "POST",
