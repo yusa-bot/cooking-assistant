@@ -13,7 +13,7 @@ const IngredientsResponseSchema = z.object({
   ingredients: z.array(IngredientSchema).describe("画像から検出された材料のリスト"),
 }).strict();
 
-type DetectIngredientsSuccess = { ingredients: IngredientTypes[] };
+type DetectIngredientsSuccess = IngredientTypes[] ;
 type DetectIngredientsError = { error: string; refusal?: string };
 export type DetectIngredientsResult = DetectIngredientsSuccess | DetectIngredientsError;
 
@@ -101,7 +101,7 @@ export async function detectIngredients(base64Image: string): Promise<DetectIngr
       console.log("Successfully detected ingredients:", validationResult.data.ingredients);
       
       // Return with correct Ingredient type
-      return { ingredients: validationResult.data.ingredients };
+      return validationResult.data.ingredients ;
 
     } catch (parseError) {
       console.error("Failed to parse OpenAI JSON response:", parseError);
