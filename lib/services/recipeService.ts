@@ -20,6 +20,23 @@ export async function getAllRecipes(): Promise<RecipeTypes[]> {
     return recipesFromDatabase
 }
 
+export async function getAllFavoriteRecipes(): Promise<RecipeTypes[]> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('recipes')
+        .select(`*, recipe_ingredients (*), recipe_steps (*)`)
+        .eq('is_favorite', true)
+        .order('created_at', { ascending: false })
+
+    if (error) throw new Error(error.message)
+    const recipesFromDatabase:RecipeTypes[] = data.map(recipe => ({
+        ...recipe,
+        ingredients: recipe.recipe_ingredients,
+        steps: recipe.recipe_steps,
+    }))
+
+    return recipesFromDatabase
+}
 export async function getRecipeById(reciepeId: string): Promise<RecipeTypes> { 
     
     const supabase = await createClient()
