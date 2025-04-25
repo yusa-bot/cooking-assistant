@@ -5,6 +5,7 @@ import { ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
+import { RecipeTypes } from "@/types/recipeTypes"
 
 interface User {
     id: string
@@ -13,27 +14,14 @@ interface User {
   }
 
 
-interface Recipe {
-    id: string
-    title: string
-    imageUrl?: string
-    description: string
-    ingredients?: { name: string; amount: number; unit: string }[]
-    steps?: { instruction: string }[]
-    date: string
-    difficulty?: string
-    cookingTime?: string
-}
+
   
-interface ApiResponse {
-    recipes: Recipe[]
-}
 
 export default function RecipeBookPage() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([])
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeTypes[]>([])
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [username, setUsername] = useState("")
   const [user,setUser] = useState<User>()
 
@@ -78,8 +66,8 @@ export default function RecipeBookPage() {
               },
             })
             if (!res.ok) throw new Error("レシピ帳取得に失敗")
-              const data: ApiResponse = await res.json()
-            setFavoriteRecipes(data.recipes)
+              const data: RecipeTypes[] = await res.json()
+            setFavoriteRecipes(data)
           } catch (err) {
             console.error("レシピ帳の取得エラー:", err)
             setFavoriteRecipes([])
@@ -91,7 +79,7 @@ export default function RecipeBookPage() {
 
 
   // レシピをクリックしたときの処理
-  const handleRecipeClick = (recipe: Recipe) => {
+  const handleRecipeClick = (recipe: RecipeTypes) => {
     // レシピの詳細情報を設定
     setSelectedRecipe({
       ...recipe,
@@ -132,20 +120,14 @@ export default function RecipeBookPage() {
               <div className="flex">
                 <div className="w-1/3">
                   <img
-                    src={recipe.imageUrl || "/placeholder.svg"}
+                    src={recipe.photo_url || "/placeholder.svg"}
                     alt={recipe.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="w-2/3 p-4">
                   <h2 className="text-lg font-medium">{recipe.title}</h2>
-                  <p className="text-gray-500 text-sm line-clamp-2 mt-1">{recipe.description}</p>
-                  <div className="flex items-center mt-2 text-sm text-gray-500">
-                    <Clock className="h-4 w-4 mr-1" />
-                    <span>{recipe.cookingTime}</span>
-                    <span className="mx-2">•</span>
-                    <span>{recipe.difficulty}</span>
-                  </div>
+                  <p className="text-gray-500 text-sm line-clamp-2 mt-1">{recipe.description}</p>                  
                 </div>
               </div>
             </div>
@@ -167,7 +149,7 @@ export default function RecipeBookPage() {
         <RecipePopup
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
-          onStartCooking={() => startCooking(selectedRecipe.id)}
+          onStartCooking={() => startCooking(selectedRecipe.id!)}
         />
       )}
     </main>

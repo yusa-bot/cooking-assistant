@@ -1,11 +1,12 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { zodResponseFormat } from 'openai/helpers/zod';
+import {GeneratedRecipeTypes,StepTypes,IngredientTypes} from '@/types/recipeTypes'; // Ingredient型をインポート
 
 // レシピ生成用スキーマ定義
 const RecipeIngredientSchema = z.object({
     name: z.string().describe("材料の名称"),
-    amount: z.number().or(z.string()).describe("材料の数量（数値または文字列）"),
+    amount: z.string().describe("材料の数量（数値または文字列）"),
     unit: z.string().describe("数量の単位"),
 });
 
@@ -42,12 +43,12 @@ const RecipesResponseSchema = z
 const openaiText = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function generateRecipesFromIngredients(
-    ingredients: any[]
-): Promise<Array<z.infer<typeof RecipeSchema> & { id: number }>> {
+    ingredients: IngredientTypes[]
+): Promise<Array<GeneratedRecipeTypes>> {
     try {
         // 材料リストをテキストプロンプトに変換
         const promptText = `以下の材料を使って作れるレシピを提案してください:\n${ingredients
-            .map((i) => `- ${i.ingredient} (${i.amount} ${i.unit})`)
+            .map((i) => `- ${i.name} (${i.amount} ${i.unit})`)
             .join('\n')}\nレシピはJSON形式で、title, description, ingredients配列, steps配列を含むオブジェクトの配列としてください。`;
 
         const response = await openaiText.chat.completions.create({
@@ -74,13 +75,14 @@ export async function generateRecipesFromIngredients(
             throw new Error("Invalid recipe response format.");
         }
 
-        // idを1から順に付与
-        const withIds = validation.data.map((recipe, idx) => ({
-            ...recipe,
-            id: idx + 1,
+        const generatedRecipes: GeneratedRecipeTypes[] = validation.data.map((r, i) => ({
+            key: i,               // unique key を振る
+            title: r.title,
+            ingredients: r.ingredients,
+            steps: r.steps,
         }));
 
-        return withIds;
+        return generatedRecipes;
     } catch (error: any) {
         console.error(error);
         throw error;

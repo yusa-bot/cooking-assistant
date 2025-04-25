@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
+import { RecipeTypes } from "@/types/recipeTypes"
 
 interface User {
   id: string
@@ -13,27 +14,13 @@ interface User {
 }
 
 
-interface Recipe {
-  id: string
-  title: string
-  imageUrl?: string
-  description: string
-  ingredients?: { name: string; amount: number; unit: string }[]
-  steps?: { instruction: string }[]
-  date: string
-  difficulty?: string
-  cookingTime?: string
-}
 
-interface ApiResponse {
-  recipes: Recipe[]
-}
 
 export default function HistoryPage() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [historyItems, setHistoryItems] = useState<Recipe[]>([])
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [historyItems, setHistoryItems] = useState<RecipeTypes[]>([])
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [username, setUsername] = useState("")
   const [user,setUser] = useState<User>()
 
@@ -77,8 +64,8 @@ export default function HistoryPage() {
             },
           })
           if (!res.ok) throw new Error("レシピ帳取得に失敗")
-            const data: ApiResponse = await res.json()
-          setHistoryItems(data.recipes)
+            const data: RecipeTypes[] = await res.json()
+          setHistoryItems(data)
         } catch (err) {
           console.error("レシピ帳の取得エラー:", err)
           setHistoryItems([])
@@ -89,7 +76,7 @@ export default function HistoryPage() {
     }, [router]);
 
   // 履歴をクリックしたときの処理
-  const handleHistoryClick = (recipe: Recipe) => {
+  const handleHistoryClick = (recipe: RecipeTypes) => {
     // 履歴からレシピの詳細情報を設定
     setSelectedRecipe({
       ...recipe,
@@ -101,6 +88,7 @@ export default function HistoryPage() {
   const startCooking = (recipeId: string) => {
     // 遷移元を記録
     localStorage.setItem("recipeSource", "history")
+    //TODO:履歴から調理する場合は、調理スタート時にjotaiに保存する
     router.push(`/recipes/${recipeId}/steps`)
   }
 
@@ -129,7 +117,7 @@ export default function HistoryPage() {
             >
               <div className="p-4 flex items-center">
                 <img
-                  src={item.imageUrl || "/placeholder.svg"}
+                  src={item.photo_url || "/placeholder.svg"}
                   alt={item.title}
                   className="w-20 h-20 object-cover rounded-md mr-4"
                 />
@@ -137,7 +125,7 @@ export default function HistoryPage() {
                   <h2 className="text-lg font-medium">{item.title}</h2>
                   <div className="flex items-center text-sm text-gray-500 mt-1">
                     <Calendar className="h-4 w-4 mr-1" />
-                    <span>{item.date}</span>
+                    <span>{item.created_at}</span>
                   </div>
                 </div>
               </div>
@@ -157,7 +145,7 @@ export default function HistoryPage() {
         <RecipePopup
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
-          onStartCooking={() => startCooking(selectedRecipe.id)}
+          onStartCooking={() => startCooking(selectedRecipe.id!)}
         />
       )}
     </main>
