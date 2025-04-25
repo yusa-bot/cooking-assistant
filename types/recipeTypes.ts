@@ -1,10 +1,10 @@
 export interface Ingredient {
     name: string;
-    amount: number;
+    amount: string;
     unit: string;
 }
 
-export interface Steps {    
+export interface Step {    
     instruction: string;
     step_number: number;
     timer?: string;
@@ -15,7 +15,7 @@ export interface Recipe {
     title:string;
     description?: string;
     ingredients: Ingredient[];
-    steps: Steps[];   
+    steps: Step[];   
     photo_url?: string;
     is_favorite: boolean;   
 }
