@@ -6,6 +6,8 @@ import { ArrowLeft, Camera, ImageIcon, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
+import { useAtom } from 'jotai'
+import { ingredientListAtom } from '@/lib/atoms' // <IngredientTypes[]>
 
 export default function ScanPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
@@ -17,6 +19,8 @@ export default function ScanPage() {
   const router = useRouter()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [ingredient, setIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
+
 
   // ログインチェック
   useEffect(() => {
@@ -110,10 +114,30 @@ export default function ScanPage() {
     if (file) {
       const reader = new FileReader()
       reader.onload = (e) => { //非同期
-        setCapturedImage(e.target?.result as string)
+        setCapturedImage(e.target?.result as string) //
         stopCamera()
       }
       reader.readAsDataURL(file) //Base64に変換
+    }
+  }
+
+  //材料を推定 jotaiへ
+  const fetchIngredients = async () => {
+    try {
+      const res = await fetch("/api/ai/detect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(capturedImage)
+      })
+      if (!res.ok) throw new Error("食材取得に失敗")
+
+      const data = await res.json()
+      setIngredient(data) // <IngredientTypes[]>
+    } catch (err) {
+      console.error("食材の取得エラー:", err)
+      setIngredient([])
     }
   }
 
@@ -196,7 +220,7 @@ export default function ScanPage() {
               </button>
 
               <button
-                onClick={() => router.push("/ingredients")}
+                onClick={fetchIngredients}
                 className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full"
               >
                 材料を確認

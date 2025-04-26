@@ -1,8 +1,8 @@
 export interface IngredientTypes {
     user_id?: string;
     name: string;
-    amount: string;
-    unit: string;
+    amount?: string;
+    unit?: string;
 }
 
 export interface StepTypes {  
@@ -13,7 +13,7 @@ export interface StepTypes {
 }
 
 export interface RecipeTypes {
-    id?: string;
+    id: string;
     user_id?: string;
     title:string;
     description?: string;
@@ -23,7 +23,6 @@ export interface RecipeTypes {
     is_favorite: boolean;
     created_at?: string;   
 }
-
 
 export interface GeneratedRecipeTypes{
     key:number;
