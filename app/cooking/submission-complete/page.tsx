@@ -5,18 +5,33 @@ import { Home, BookOpen, Check, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
+interface User {
+  id: string
+  email: string
+  userName?: string
+}
+
 export default function SubmissionCompletePage() {
   const params = useParams()
   const recipeId = Number(params.id)
   const router = useRouter()
+  const [user,setUser] = useState<User>()
 
-  // ログインチェックを追加
+  // ログイン
   useEffect(() => {
-    const user = localStorage.getItem("user")
-    if (!user) {
-      router.push("/login")
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
+        router.push("/login")
+        return
+      }
+
+      const data = await res.json()
+      console.log(data)
+      setUser(data.user)
     }
-  }, [router])
+    fetchUser()
+  },[router])
 
   const [addedToRecipeBook, setAddedToRecipeBook] = useState(false)
   const [showAddConfirm, setShowAddConfirm] = useState(false)
