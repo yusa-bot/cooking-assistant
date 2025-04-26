@@ -22,6 +22,7 @@ export default function HistoryPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [username, setUsername] = useState("")
   const [user,setUser] = useState<User>()
+  const [showMenu, setShowMenu] = useState(false)
 
     // ログイン状態と履歴を確認
     useEffect(() => {
@@ -104,7 +105,55 @@ export default function HistoryPage() {
           <span>戻る</span>
         </Link>
         <h1 className="text-xl font-semibold">料理履歴</h1>
-        <div className="w-16"></div> {/* スペーサー */}
+        
+        {/* ハンバーガーメニュー */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-2 hover:bg-gray-100 rounded-full"
+            aria-label="メニューを開く"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+              <line x1="4" x2="20" y1="12" y2="12"></line>
+              <line x1="4" x2="20" y1="6" y2="6"></line>
+              <line x1="4" x2="20" y1="18" y2="18"></line>
+            </svg>
+          </button>
+          
+          {showMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+              <div className="py-1">
+                <Link 
+                  href="/recipe-book" 
+                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                  onClick={() => setShowMenu(false)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                  レシピ帳
+                </Link>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem("user");
+                    setIsLoggedIn(false);
+                    setUsername("");
+                    router.push("/");
+                  }} 
+                  className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  ログアウト
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
