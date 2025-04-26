@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff } from "lucide-react"
 import TimerUI from "@/components/ui/TimerUI"
@@ -131,7 +132,7 @@ export default function RecipeStepsPage() {
     const handleError = (error: any) => {
       console.error("音声認識エラー:", error)
       // エラー発生時のみ再起動（既に起動している場合は startListening 内部でスキップされる）
-      if (!isUnmounted) {
+      if (!isUnmounted && !recognition.getIsListening()) {
         setTimeout(() => recognition.startListening(handleResult, handleError), 1000)
       }
     }
@@ -170,23 +171,22 @@ export default function RecipeStepsPage() {
         <div className="mb-4 flex items-center">
           
           {recipe.steps.map((_, idx) => (
-        <>
-          {idx > 0 && (
-            <div className="w-6 h-px bg-gray-300 mx-2" />
-          )}
-          <button
-            key={idx}
-            onClick={() => setCurrentStepIndex(idx)}
-            className={`
-              w-10 h-10 flex items-center justify-center rounded-full font-semibold
-              ${idx === currentStepIndex
-                ? "bg-green-600 text-white"
-                : "bg-gray-300 text-gray-700"}
-            `}
-          >
-            {idx + 1}
-          </button>
-        </>
+            <React.Fragment key={idx}>
+              {idx > 0 && (
+                <div className="w-6 h-px bg-gray-300 mx-2" />
+              )}
+              <button
+                onClick={() => setCurrentStepIndex(idx)}
+                className={`
+                  w-10 h-10 flex items-center justify-center rounded-full font-semibold
+                  ${idx === currentStepIndex
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-300 text-gray-700"}
+                `}
+              >
+                {idx + 1}
+              </button>
+            </React.Fragment>
           ))}
         </div>
 
@@ -238,7 +238,7 @@ export default function RecipeStepsPage() {
                 if (isListening) {
                   recognition.stopListening();
                   setIsListening(false);
-                } else {
+                } else if (!recognition.getIsListening()) {
                   recognition.startListening(
                     (text: string) => {
                       setVoiceQuestion(text);
