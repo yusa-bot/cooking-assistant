@@ -63,15 +63,9 @@ export default function HistoryPage() {
               Authorization: `Bearer ${userData.id}`,
             },
           })
-<<<<<<< HEAD
-          if (!res.ok) throw new Error(`Error fetching recipes: ${res.status}`);
-            const data: ApiResponse = await res.json()
-          setHistoryItems(data.recipes)
-=======
           if (!res.ok) throw new Error("レシピ帳取得に失敗")
             const data: RecipeTypes[] = await res.json()
           setHistoryItems(data)
->>>>>>> 5822a5a603a2786f9463eeee4ed23e30dc67c9f7
         } catch (err) {
           console.error("レシピ帳の取得エラー:", err)
           setHistoryItems([])
