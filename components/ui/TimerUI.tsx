@@ -27,10 +27,9 @@ const TimerUI = forwardRef<TimerUIRef, TimerUIProps>(function TimerUI({ initialT
   const [display, setDisplay] = useState<string>(initialTime)
   const [running, setRunning] = useState<boolean>(false)
 
-  // よりアラーム感の強いビープ音
+  // アラーム音
   const playBeep = () => {
     const ctx = new AudioContext()
-    // 連続した高低音を交互に鳴らす
     const pattern = [
       { freq: 1500, dur: 0.18 },
       { freq: 900, dur: 0.18 },
@@ -81,7 +80,6 @@ const TimerUI = forwardRef<TimerUIRef, TimerUIProps>(function TimerUI({ initialT
   const start = () => { timerRef.current?.start(); setRunning(true) }
   const stop = () => { timerRef.current?.stop(); setRunning(false) }
 
-  // ref を通して start と stop メソッドを公開
   useImperativeHandle(ref, () => ({
     start,
     stop
@@ -91,55 +89,52 @@ const TimerUI = forwardRef<TimerUIRef, TimerUIProps>(function TimerUI({ initialT
     setMinutes(m => Math.min(59, Math.max(0, m + delta)))
 
   const adjustSeconds = (delta: number) =>
-    setSeconds(s => {
-      const total = Math.min(59, Math.max(0, s + delta))
-      return total
-    })
+    setSeconds(s => Math.min(59, Math.max(0, s + delta)))
 
   return (
-    <div className="bg-white dark:bg-gray-800 px-5 rounded-xl  flex flex-col items-center space-y-2 w-full">
-      {/* ±ボタンを常にレンダリングしてレイアウトを維持。実行中は visibility を off に */}
-      <div className={`flex gap-10 w-full ${running ? "invisible" : ""}`}>
+    <div className="bg-white dark:bg-gray-800 px-3 sm:px-5 rounded-xl flex flex-col items-center space-y-2 w-full">
+      {/* ±ボタン上部 */}
+      <div className={`flex gap-4 sm:gap-10 w-full ${running ? "invisible" : ""}`}>
         <button
           onClick={() => adjustMinutes(1)}
-          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full flex items-center justify-center"
+          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full h-9 flex items-center justify-center"
         >
-          <Plus />
+          <Plus className="h-5 w-5" />
         </button>
         <button
           onClick={() => adjustSeconds(5)}
-          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full flex items-center justify-center"
+          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full h-9 flex items-center justify-center"
         >
-          <Plus />
+          <Plus className="h-5 w-5" />
         </button>
       </div>
 
       {/* 時間表示 */}
       <div className="flex flex-1 items-center justify-center w-full">
-        <div className="mx-auto text-5xl font-bold tracking-widest flex items-center font-mono tabular-nums">
-          <span className=" text-center flex justify-center">
-        {display.split(":")[0].padStart(2, "0")}
+        <div className="mx-auto text-4xl sm:text-5xl font-bold tracking-widest flex items-center font-mono tabular-nums">
+          <span className="text-center flex justify-center w-[2.5ch]">
+            {display.split(":")[0].padStart(2, "0")}
           </span>
-          <span className="px-12 flex justify-center">:</span>
-          <span className="w-[2ch] text-center flex justify-center">
-        {display.split(":")[1].padStart(2, "0")}
+          <span className="px-2 sm:px-4 flex justify-center">:</span>
+          <span className="text-center flex justify-center w-[2.5ch]">
+            {display.split(":")[1].padStart(2, "0")}
           </span>
         </div>
       </div>
 
-      {/* ±ボタン */}
-      <div className={`flex gap-10 w-full ${running ? "invisible" : ""}`}>
+      {/* ±ボタン下部 */}
+      <div className={`flex gap-4 sm:gap-10 w-full ${running ? "invisible" : ""}`}>
         <button
           onClick={() => adjustMinutes(-1)}
-          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full flex items-center justify-center"
+          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full h-9 flex items-center justify-center"
         >
-          <Minus />
+          <Minus className="h-5 w-5" />
         </button>
         <button
           onClick={() => adjustSeconds(-5)}
-          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full flex items-center justify-center"
+          className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full h-9 flex items-center justify-center"
         >
-          <Minus />
+          <Minus className="h-5 w-5" />
         </button>
       </div>
 
@@ -148,16 +143,20 @@ const TimerUI = forwardRef<TimerUIRef, TimerUIProps>(function TimerUI({ initialT
         {running ? (
           <button
             onClick={stop}
-            className="px-8 py-1 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center w-full"
+            className="px-8 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center w-full gap-2"
+            aria-label="タイマー停止"
           >
-            <Square />
+            <Square className="h-5 w-5" />
+            <span>停止</span>
           </button>
         ) : (
           <button
             onClick={start}
-            className="px-8 py-1 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center w-full"
+            className="px-8 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center w-full gap-2"
+            aria-label="タイマー開始"
           >
-            <Play />
+            <Play className="h-5 w-5" />
+            <span>開始</span>
           </button>
         )}
       </div>

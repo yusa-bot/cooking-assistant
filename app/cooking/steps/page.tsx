@@ -2,12 +2,11 @@
 
 import React from "react"
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff, PlayCircle } from "lucide-react"
+import { Mic, Check, MicOff, PlayCircle } from "lucide-react"
 import TimerUI, { TimerUIRef } from "@/components/ui/TimerUI"
-import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { getSpeechRecognition } from "@/utils/speech-recognition"
-import { getSpeechSynthesis, SpeechSynthesisEvent } from "@/utils/speech-synthesis"
+import { getSpeechSynthesis } from "@/utils/speech-synthesis"
 import { useAtom } from 'jotai'
 import { recipeAtom } from '@/store/recipeAtom'
 import { RecipeTypes } from "@/types/recipeTypes"
@@ -30,8 +29,7 @@ const dummyRecipe: RecipeTypes = {
   id: "dummy_id",
   photo_url: "dummy_photo_url"
 }
-export default function RecipeStepsPage() {
-  const params = useParams()
+export default function RecipeStepsPage() {  
   const router = useRouter()
   //const [recipe] = useAtom(recipeAtom)
   const recipe = dummyRecipe // For testing purposes, using a dummy recipe
