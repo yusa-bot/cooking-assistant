@@ -10,6 +10,7 @@ export interface StepTypes {
     instruction: string;
     step_number: number;
     timer?: string;
+    id?: number;
 }
 
 export interface RecipeTypes {
