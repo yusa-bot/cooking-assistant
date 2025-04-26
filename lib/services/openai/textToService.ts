@@ -46,7 +46,7 @@ export async function generateRecipesFromIngredients(
     try {
         console.log(ingredients, "Sending request to OpenAI for recipe generation...");
         // 材料リストをテキストプロンプトに変換
-        const promptText = `以下の材料を使って作れるレシピをできるだけ多く提案してください:\n${ingredients
+        const promptText = `以下の材料を使って作れるレシピをできるだけ多く提案してください。ただし、材料リストに含まれないものは使用しないようにしなさい:\n${ingredients
             .map((i) => `- ${i.name} (${i.amount} ${i.unit})`)
             .join('\n')}\nレシピはJSON形式で、title, description, ingredients配列, steps配列を含むオブジェクトの配列としてください。`;
 
@@ -56,7 +56,7 @@ export async function generateRecipesFromIngredients(
                 {
                     role: "system",
                     content:
-                        "あなたは料理の専門家で、指定された材料から魅力的なレシピをできるだけ多く生成します。出力は指定されたJSON形式に従ってください。",
+                        "あなたは料理の専門家で、指定された材料から魅力的なレシピをできるだけ多く生成します。ただし、座領リストに含まれていないものは使用しないこと出力は指定されたJSON形式に従ってください。",
                 },
                 { role: "user", content: promptText },
             ],
