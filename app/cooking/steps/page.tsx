@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff } from "lucide-react"
 import TimerUI from "@/components/ui/TimerUI"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { getSpeechRecognition } from "@/utils/speech-recognition"
-import { getSpeechSynthesis } from "@/utils/speech-synthesis"
+import { getSpeechSynthesis, SpeechSynthesisEvent } from "@/utils/speech-synthesis"
 import { useAtom } from 'jotai'
 import { recipeAtom } from '@/store/recipeAtom'
 import { RecipeTypes } from "@/types/recipeTypes"
@@ -35,11 +35,12 @@ export default function RecipeStepsPage() {
   //const [recipe] = useAtom(recipeAtom)
   const recipe = dummyRecipe // For testing purposes, using a dummy recipe
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [voiceQuestion, setVoiceQuestion] = useState("")
   const [aiAnswer, setAiAnswer] = useState("")
   const [showAiAnswer, setShowAiAnswer] = useState(false)
+  const [isPausedForSpeech, setIsPausedForSpeech] = useState(false)
+  const initialLoadRef = useRef(true)
 
   if (!recipe) return <p>レシピがありません</p>
 
@@ -47,45 +48,72 @@ export default function RecipeStepsPage() {
 
   const goToNextStep = () => setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
   const goToPrevStep = () => setCurrentStepIndex(i => Math.max(i - 1, 0))
-
-  useEffect(() => {
-    if (step && step.instruction) {
-      const synth = getSpeechSynthesis()
-      if (synth.getIsSpeaking()) {
-        synth.stop()
-      }
-      speakInstruction(step.instruction)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStepIndex])
-
-  // ステップの指示文・AI返答の読み上げを一元管理し、再生時は音声認識を一時停止→再開
+  
+  // 音声合成と音声認識の調整 - システム音声出力中は音声認識を一時停止する
   useEffect(() => {
     const synth = getSpeechSynthesis()
     const recognition = getSpeechRecognition()
+    
     if (!recognition.isSupported()) return
-    let spokenText = aiAnswer || (step && step.instruction)
-    if (!spokenText) return
-
-    // 音声認識を一時停止
-    recognition.stopListening()
-    // 読み上げ
-    synth.speak(spokenText)
-    // 読み上げ終了時に音声認識を再開
-    const interval = setInterval(() => {
-      if (!synth.getIsSpeaking()) {
-        recognition.startListening(() => {}, () => {})
-        clearInterval(interval)
+    
+    // 音声合成開始時のハンドラー
+    const handleSpeechStart = () => {
+      recognition.pauseListening()
+      setIsPausedForSpeech(true)
+    }
+    
+    // 音声合成終了時のハンドラー
+    const handleSpeechEnd = () => {
+      // 少し遅延を入れて、音声出力が完全に終わってから認識再開
+      setTimeout(() => {
+        recognition.resumeListening()
+        setIsPausedForSpeech(false)
+      }, 300)
+    }
+    
+    // イベントリスナー登録
+    synth.addEventListener('start', handleSpeechStart)
+    synth.addEventListener('end', handleSpeechEnd)
+    
+    // クリーンアップ
+    return () => {
+      synth.removeEventListener('start', handleSpeechStart)
+      synth.removeEventListener('end', handleSpeechEnd)
+    }
+  }, [])
+  
+  // 初期読み上げとステップ変更時の読み上げを管理
+  useEffect(() => {
+    const synth = getSpeechSynthesis()
+    
+    if (step && step.instruction) {
+      // 最初のステップでは優先度低く、ステップ変更時は優先度高く
+      const isPriority = !initialLoadRef.current
+      
+      // instructionを読み上げる（初期表示または手動でステップ変更時）
+      synth.speak(step.instruction, "ja-JP", isPriority)
+      
+      // 初期ロードフラグを更新
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false
       }
-    }, 200)
-    return () => clearInterval(interval)
-  }, [step, aiAnswer])
+    }
+  }, [currentStepIndex])
 
-  // 音声認識の初期化・クリーンアップ専用
+  // AIの返答があった場合は優先して読み上げ
+  useEffect(() => {
+    if (aiAnswer) {
+      const synth = getSpeechSynthesis()
+      synth.speak(aiAnswer, "ja-JP", true)
+    }
+  }, [aiAnswer])
+
+  // 音声認識の初期化・クリーンアップ専用 - 継続的な音声認識を実装
   useEffect(() => {
     const recognition = getSpeechRecognition()
     if (!recognition.isSupported()) return
     let isUnmounted = false
+    
     const handleResult = (text: string) => {
       setVoiceQuestion(text)
       handleVoiceQuery({
@@ -97,19 +125,35 @@ export default function RecipeStepsPage() {
         setAiAnswer,
         setShowAiAnswer,
       })
-      setTimeout(() => {
-        if (!isUnmounted) recognition.startListening(handleResult, handleError)
-      }, 2000)
+      // 継続モードなので再起動は不要
     }
-    const handleError = () => {}
+    
+    const handleError = (error: any) => {
+      console.error("音声認識エラー:", error)
+      // エラー発生時のみ再起動（既に起動している場合は startListening 内部でスキップされる）
+      if (!isUnmounted) {
+        setTimeout(() => recognition.startListening(handleResult, handleError), 1000)
+      }
+    }
+    
+    // 音声認識が終了した場合の処理
     const handleEnd = () => {
-      if (!isUnmounted) recognition.startListening(handleResult, handleError)
+      // 終了した場合のみ再起動（すでに起動中でない場合のみ）
+      if (!isUnmounted && !recognition.getIsListening()) {
+        setTimeout(() => recognition.startListening(handleResult, handleError), 500)
+      }
     }
+    
+    // 初回起動
     recognition.startListening(handleResult, handleError)
+    
+    // onendイベントハンドラの設定（直接アクセスは本来避けるべきだが、現状の実装に合わせる）
     if ((recognition as any).recognition) {
       (recognition as any).recognition.onend = handleEnd
     }
+    
     setIsListening(true)
+    
     return () => {
       isUnmounted = true
       recognition.stopListening()
@@ -199,17 +243,23 @@ export default function RecipeStepsPage() {
         )}
       </div>
       <div>
-        {aiAnswer}
+        {aiAnswer && showAiAnswer && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg mt-4">
+            <p className="text-gray-800">{aiAnswer}</p>
+          </div>
+        )}
+      </div>
+      
+      {/* マイク状態インジケーターを追加 */}
+      <div className="fixed bottom-16 right-6 flex items-center justify-center p-2 rounded-full bg-white shadow-md">
+        {isPausedForSpeech ? (
+          <MicOff className="h-6 w-6 text-gray-400" />
+        ) : (
+          <Mic className="h-6 w-6 text-green-600" />
+        )}
       </div>
       
     </main>
   )
-}
-function speakInstruction(instruction: string) {
-  const synth = getSpeechSynthesis()
-  if (synth.getIsSpeaking()) {
-    synth.stop()
-  }
-  synth.speak(instruction)
 }
 

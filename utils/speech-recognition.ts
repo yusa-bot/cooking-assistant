@@ -4,6 +4,8 @@ type RecognitionCallback = (text: string) => void
 export class SpeechRecognitionManager {
   private recognition: SpeechRecognition | null = null
   private isListening = false
+  private isPaused = false
+  private savedCallbacks: { onResult?: RecognitionCallback, onError?: (error: any) => void } = {}
 
   constructor() {
     // ブラウザがSpeechRecognitionをサポートしているか確認
@@ -16,8 +18,8 @@ export class SpeechRecognitionManager {
       // 設定
       if (this.recognition) {
         this.recognition.lang = "ja-JP"
-        this.recognition.continuous = false
-        this.recognition.interimResults = false
+        this.recognition.continuous = true  // 継続的な音声認識を有効化
+        this.recognition.interimResults = true  // 中間結果も取得するように変更
       }
     }
   }
@@ -27,6 +29,27 @@ export class SpeechRecognitionManager {
     return this.recognition !== null
   }
 
+  // 音声認識を一時停止（システム音声出力中に使用）
+  public pauseListening(): void {
+    if (this.recognition && this.isListening && !this.isPaused) {
+      try {
+        this.isPaused = true
+        this.recognition.stop()
+        // isListeningはfalseになるが、isPausedがtrueなので再開可能
+      } catch (error) {
+        console.error("音声認識の一時停止に失敗しました:", error)
+      }
+    }
+  }
+
+  // 一時停止した音声認識を再開
+  public resumeListening(): void {
+    if (this.recognition && this.isPaused && this.savedCallbacks.onResult) {
+      this.isPaused = false
+      this.startListening(this.savedCallbacks.onResult, this.savedCallbacks.onError)
+    }
+  }
+
   // 音声認識を開始
   public startListening(onResult: RecognitionCallback, onError?: (error: any) => void): void {
     if (!this.recognition) {
@@ -34,16 +57,26 @@ export class SpeechRecognitionManager {
       return
     }
 
+    // コールバックを保存（一時停止からの復帰に使用）
+    this.savedCallbacks = { onResult, onError }
+    
+    // 既にリスニング中なら再起動しない（エラー防止）
     if (this.isListening) {
-      this.stopListening()
+      return
     }
 
     this.isListening = true
 
     // 結果イベントのハンドラ
     this.recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript
-      onResult(transcript)
+      // 継続的な認識では複数の結果がある可能性があるため、最新の結果を使用
+      const lastResultIndex = event.results.length - 1;
+      const transcript = event.results[lastResultIndex][0].transcript;
+      
+      // 中間結果ではなく、確定した結果のみを処理
+      if (event.results[lastResultIndex].isFinal) {
+        onResult(transcript);
+      }
     }
 
     // エラーイベントのハンドラ
@@ -75,12 +108,18 @@ export class SpeechRecognitionManager {
         console.error("音声認識の停止に失敗しました:", error)
       }
       this.isListening = false
+      this.isPaused = false
     }
   }
 
   // 現在リスニング中かどうか
   public getIsListening(): boolean {
-    return this.isListening
+    return this.isListening && !this.isPaused
+  }
+  
+  // 一時停止中かどうか
+  public getIsPaused(): boolean {
+    return this.isPaused
   }
 }
 
