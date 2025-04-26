@@ -87,11 +87,12 @@ export default function Home() {
       const fetchHistory = async () => {
         try {
           const res = await fetch("/api/recipes", {
+            method: 'GET',
             headers: {
               Authorization: `Bearer ${userData.id}`,
             },
           })
-          if (!res.ok) throw new Error("履歴取得に失敗")
+          if (!res.ok) throw new Error(`Error fetching recipes: ${res.status}`);
 
           const data: ApiResponse = await res.json()
           setCookingHistory(data.recipes)
@@ -102,11 +103,12 @@ export default function Home() {
       }
       fetchHistory()
 
-    //れしぴ用に変える
+    //レシピ帳用に変える
     // ログイン済みの場合、レシピ帳データを取得
     const fetchFavorite = async () => {
       try {
         const res = await fetch("/api/recipes", {
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${userData.id}`,
           },

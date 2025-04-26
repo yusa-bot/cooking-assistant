@@ -4,60 +4,71 @@ import { useState, useRef, useEffect } from "react"
 import { ArrowLeft, Camera, X, Save } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
+import { useAtom } from 'jotai'
+import { recipeAtom } from '@/store/recipeAtom'
+
+interface User {
+  id: string
+  email: string
+  userName?: string
+}
 
 export default function SubmitPhotoPage() {
   const params = useParams()
   const recipeId = Number(params.id)
   const router = useRouter()
-
-  // ログインチェックを追加
-  useEffect(() => {
-    const user = localStorage.getItem("user")
-    if (!user) {
-      router.push("/login")
-    }
-  }, [router])
-
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [note, setNote] = useState<string>("")
   const [showConfirmation, setShowConfirmation] = useState<boolean>(false)
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  // レシピ情報
   const [recipeName, setRecipeName] = useState<string>("")
+  const [token, setToken] = useState<string | null>(null)
+  const [user,setUser] = useState<User>()
+  const [recipe, setRecipe] = useAtom(recipeAtom)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
 
+
+  // ログイン
   useEffect(() => {
-    const fetchRecipe = async () => {
-      const user = localStorage.getItem("user")
-      if (!user) {
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
         router.push("/login")
         return
       }
-  
-      const { token } = JSON.parse(user)
-  
-      try {
-        const res = await fetch(`/api/recipes/${recipeId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        if (!res.ok) throw new Error("レシピ情報の取得に失敗")
-        const data = await res.json()
-        setRecipeName(data.name || "レシピ名不明")
-      } catch (err) {
-        console.error("レシピ取得エラー:", err)
-        setRecipeName("レシピ名取得失敗")
-      }
-    }
-  
-    fetchRecipe()
-  }, [recipeId, router])
-  
 
-  // カメラを起動する関数
+      const data = await res.json()
+      console.log(data)
+      setToken(data.token)
+      setUser(data.user)
+    }
+    fetchUser()
+  },[router])
+
+  // useEffect(() => {
+  //   const fetchRecipe = async () => {
+  //     try {
+  //       const res = await fetch(`/api/recipes/${recipeId}`, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       })
+  //       if (!res.ok) throw new Error("レシピ情報の取得に失敗")
+  //       const data = await res.json()
+  //       setRecipeName(data.name || "レシピ名不明")
+  //     } catch (err) {
+  //       console.error("レシピ取得エラー:", err)
+  //       setRecipeName("レシピ名取得失敗")
+  //     }
+  //   }
+  
+  //   fetchRecipe()
+  // }, [recipeId, router])
+
+
+  //カメラを起動する関数
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -90,17 +101,24 @@ export default function SubmitPhotoPage() {
       const video = videoRef.current
       const canvas = canvasRef.current
       const context = canvas.getContext("2d")
-
       // キャンバスのサイズをビデオのサイズに合わせる
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-
       // ビデオフレームをキャンバスに描画
       context?.drawImage(video, 0, 0, canvas.width, canvas.height)
-
       // キャンバスの内容を画像URLとして取得
-      const imageUrl = canvas.toDataURL("image/jpeg")
-      setPhotoUrl(imageUrl)
+      const imageDataUrl = canvas.toDataURL("image/jpeg")
+      setPhotoUrl(imageDataUrl)
+
+
+      // Base64をBlobに変換してFileオブジェクトを作成
+      const response = await fetch(imageDataUrl)
+      const blob = await response.blob()
+      const file = new File([blob], "photo.jpg", { type: "image/jpeg" })
+
+
+      // fileを保存
+      setPhotoFile(file)
 
       // カメラを停止
       stopCamera()
@@ -111,57 +129,64 @@ export default function SubmitPhotoPage() {
   const removePhoto = () => {
     setPhotoUrl(null)
   }
-
   // 撮り直す
   const retakePhoto = () => {
     setPhotoUrl(null)
     startCamera()
   }
-
   // 提出確認を表示
   const showSubmitConfirmation = () => {
     setShowConfirmation(true)
   }
-
   // 提出確認をキャンセル
   const cancelSubmit = () => {
     setShowConfirmation(false)
   }
 
   // 写真を提出して履歴に保存
-  const submitAndSaveToHistory = async () => {
-    const user = localStorage.getItem("user")
-    if (!user) {
-      alert("ログインしてください")
-      return
-    }
-  
-    const { token } = JSON.parse(user)
-    //写真をアップロードするだけにする
-    //他の情報はレシピテーブルに保存する
-    try {
-      const res = await fetch(`/api/history`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          recipeId,
-          photoUrl,
-          note,
-          date: new Date().toISOString(),
-        }),
-      })
-  
-      if (!res.ok) throw new Error("送信失敗")
-  
-      router.push(`/recipes/${recipeId}/submission-complete`)
-    } catch (err) {
-      console.error("送信エラー:", err)
-      alert("送信に失敗しました")
-    }
+  const submitAndSaveToHistory = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/images/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Image upload failed: ${res.status}`);
+    return await res.json();
+
+    setRecipe(prev => prev ? {
+      ...prev,
+      photo_url: result.imageUrl, // ←ここにサーバーから返ってきた本物のURLをセット！
+    } : prev)
   }
+  
+  
+  //   const { token } = JSON.parse(user)
+  //   //写真をアップロードするだけにする
+  //   //他の情報はレシピテーブルに保存する
+  //   try {
+  //     const res = await fetch(`/api/history`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Authorization: `Bearer ${token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         recipeId,
+  //         photoUrl,
+  //         note,
+  //         date: new Date().toISOString(),
+  //       }),
+  //     })
+  
+  //     if (!res.ok) throw new Error("送信失敗")
+  
+  //     router.push(`/recipes/${recipeId}/submission-complete`)
+  //   } catch (err) {
+  //     console.error("送信エラー:", err)
+  //     alert("送信に失敗しました")
+  //   }
+  // }
   
 
   // コンポーネントがマウントされたときにカメラを自動起動

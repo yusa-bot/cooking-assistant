@@ -12,7 +12,6 @@ interface User {
   userName?: string
 }
 
-
 interface Recipe {
   id: string
   title: string
@@ -72,11 +71,12 @@ export default function HistoryPage() {
       const fetchFavorite = async () => {
         try {
           const res = await fetch("/api/recipes", {
+            method: 'GET',
             headers: {
               Authorization: `Bearer ${userData.id}`,
             },
           })
-          if (!res.ok) throw new Error("レシピ帳取得に失敗")
+          if (!res.ok) throw new Error(`Error fetching recipes: ${res.status}`);
             const data: ApiResponse = await res.json()
           setHistoryItems(data.recipes)
         } catch (err) {

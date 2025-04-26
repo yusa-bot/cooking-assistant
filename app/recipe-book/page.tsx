@@ -73,11 +73,12 @@ export default function RecipeBookPage() {
         const fetchFavorite = async () => {
           try {
             const res = await fetch("/api/recipes", {
+              method: 'GET',
               headers: {
                 Authorization: `Bearer ${userData.id}`,
               },
             })
-            if (!res.ok) throw new Error("レシピ帳取得に失敗")
+            if (!res.ok) throw new Error(`Error fetching recipes: ${res.status}`);
               const data: ApiResponse = await res.json()
             setFavoriteRecipes(data.recipes)
           } catch (err) {
@@ -88,7 +89,6 @@ export default function RecipeBookPage() {
         fetchFavorite()
         
       }, [router]);
-
 
   // レシピをクリックしたときの処理
   const handleRecipeClick = (recipe: Recipe) => {

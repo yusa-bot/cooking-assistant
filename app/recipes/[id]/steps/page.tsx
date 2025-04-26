@@ -7,6 +7,8 @@ import { useParams, useRouter } from "next/navigation"
 import { getSpeechRecognition } from "@/utils/speech-recognition"
 import { getAnswerForQuestion } from "@/utils/cooking-ai"
 import { getSpeechSynthesis } from "@/utils/speech-synthesis"
+import { useAtom } from 'jotai'
+import { recipeAtom } from '@/store/recipeAtom'
 
 // レシピの手順の型定義
 interface RecipeStep {
@@ -37,43 +39,50 @@ export default function RecipeStepsPage() {
   const timerIntervalsRef = useRef<Record<number, NodeJS.Timeout>>({})
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [recipe, setRecipe] = useState<Recipe | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [recipeSource, setRecipeSource] = useState<string>("recipes")
+  const [customTimerMinutes, setCustomTimerMinutes] = useState(0)
+  const [customTimerSeconds, setCustomTimerSeconds] = useState(0)
+  const [recipe, setRecipe] = useAtom(recipeAtom) //jotaiから取得
+  // レシピデータ（実際のアプリではAPIから取得）
+  if (!recipe) {
+    return <p>レシピがありません</p>
+  }
 
-  // ログインチェックを追加
+  // ログイン
   useEffect(() => {
-    const fetchRecipe = async () => {
-      const user = localStorage.getItem("user")
-      if (!user) {
+    const fetchUser = async () => {
+      const res = await fetch("/api/auth/user")
+      if (!res.ok) {
         router.push("/login")
         return
       }
-  
-      const { token } = JSON.parse(user)
-  
-      try {
-        const res = await fetch(`/api/ai}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        if (!res.ok) throw new Error("レシピ取得に失敗")
-        const data = await res.json()
-        setRecipe(data)
-      } catch (err) {
-        console.error("レシピ取得エラー:", err)
-        router.push("/recipes")
-      } finally {
-        setLoading(false)
-      }
     }
+    fetchUser()
+
+    // 遷移元を取得
+    const source = localStorage.getItem("recipeSource")
+    if (source) {
+      setRecipeSource(source)
+    }
+  },[router])
   
-    fetchRecipe()
-  }, [recipeId, router])
+  // 戻るボタンのリンク先を決定
+  const getBackLink = () => {
+    switch (recipeSource) {
+      case "home":
+        return "/"
+      case "recipe-book":
+        return "/recipe-book"
+      case "history":
+        return "/history"
+      default:
+        return "/recipes"
+    }
+  }
 
   // 次のステップに進む
   const goToNextStep = () => {
-    if (recipe && currentStepIndex < recipe.steps.length - 1) {
+    if (currentStepIndex < recipe.steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1)
     }
   }
@@ -87,7 +96,7 @@ export default function RecipeStepsPage() {
 
   // 特定のステップに移動
   const goToStep = (index: number) => {
-    if (recipe && index >= 0 && index < recipe.steps.length) {
+    if (index >= 0 && index < recipe.steps.length) {
       setCurrentStepIndex(index)
     }
   }
@@ -162,6 +171,66 @@ export default function RecipeStepsPage() {
     setShowAiAnswer(false)
   }
 
+  // カスタムタイマーの分を増やす
+  const increaseMinutes = () => {
+    setCustomTimerMinutes((prev) => (prev < 60 ? prev + 1 : prev))
+  }
+
+  // カスタムタイマーの分を減らす
+  const decreaseMinutes = () => {
+    setCustomTimerMinutes((prev) => (prev > 0 ? prev - 1 : prev))
+  }
+
+  // カスタムタイマーの秒を増やす
+  const increaseSeconds = () => {
+    setCustomTimerSeconds((prev) => {
+      if (prev >= 55) {
+        increaseMinutes()
+        return 0
+      }
+      return prev + 5
+    })
+  }
+
+  // カスタムタイマーの秒を減らす
+  const decreaseSeconds = () => {
+    setCustomTimerSeconds((prev) => {
+      if (prev <= 0 && customTimerMinutes > 0) {
+        decreaseMinutes()
+        return 55
+      }
+      return prev > 0 ? prev - 5 : prev
+    })
+  }
+
+  // カスタムタイマーを開始
+  const startCustomTimer = () => {
+    const totalSeconds = customTimerMinutes * 60 + customTimerSeconds
+    if (totalSeconds > 0) {
+      const currentStepId = recipe.steps[currentStepIndex].id
+      setTimerSeconds((prev) => ({ ...prev, [currentStepId]: totalSeconds }))
+      setActiveTimers((prev) => ({ ...prev, [currentStepId]: true }))
+
+      timerIntervalsRef.current[currentStepId] = setInterval(() => {
+        setTimerSeconds((prev) => {
+          const newSeconds = prev[currentStepId] - 1
+          if (newSeconds <= 0) {
+            stopTimer(currentStepId)
+            // タイマー終了時に通知
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("タイマー終了", {
+                body: `ステップ ${currentStepId} のタイマーが終了しました。`,
+                icon: "/favicon.ico",
+              })
+            }
+            return { ...prev, [currentStepId]: 0 }
+          }
+          return { ...prev, [currentStepId]: newSeconds }
+        })
+      }, 1000)
+    }
+  }
+
   // タイマーを開始
   const startTimer = (stepId: number, duration: number) => {
     if (!activeTimers[stepId]) {
@@ -233,47 +302,33 @@ export default function RecipeStepsPage() {
     }
   }, [])
 
-  if (loading) return <p className="text-center">読み込み中...</p>
-  if (!recipe) return <p className="text-center">レシピが見つかりません</p>
+  // 現在のステップが変わったときにカスタムタイマーの値を更新
+  useEffect(() => {
+    const currentStep = recipe.steps[currentStepIndex]
+    if (currentStep.timer) {
+      setCustomTimerMinutes(Math.floor(currentStep.timer / 60))
+      setCustomTimerSeconds(currentStep.timer % 60)
+    } else {
+      setCustomTimerMinutes(0)
+      setCustomTimerSeconds(0)
+    }
+  }, [currentStepIndex, recipe.steps])
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <header className="w-full max-w-md mx-auto py-4 flex items-center justify-between sticky top-0 bg-gray-50 z-10">
         <Link
-          href="/recipes"
+          href={getBackLink()}
           className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
         >
           <ArrowLeft className="h-5 w-5 mr-1" />
-          <span>レシピ一覧</span>
+          <span>戻る</span>
         </Link>
         <h1 className="text-xl font-semibold truncate max-w-[200px]">{recipe.name}</h1>
         <div className="w-16"></div> {/* スペーサー */}
       </header>
 
       <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
-        {/* 音声質問ボタン - 常に画面上部に固定 */}
-        <div className="sticky top-16 z-10 w-full flex justify-center my-4">
-          <button
-            onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
-            className={`flex items-center justify-center px-6 py-3 rounded-full shadow-lg ${
-              isListening ? "bg-red-500 text-white" : "bg-white text-gray-800 border border-gray-300"
-            }`}
-            aria-label={isListening ? "音声認識を停止" : "音声で質問"}
-          >
-            {isListening ? (
-              <>
-                <MicOff className="h-6 w-6 mr-2" />
-                <span className="font-medium">停止する</span>
-              </>
-            ) : (
-              <>
-                <Mic className="h-6 w-6 mr-2" />
-                <span className="font-medium">音声で質問</span>
-              </>
-            )}
-          </button>
-        </div>
-
         {/* 音声質問と回答 */}
         {showAiAnswer && (
           <div className="w-full bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-md relative">
@@ -329,51 +384,126 @@ export default function RecipeStepsPage() {
               </p>
 
               {/* タイマー */}
-              {recipe.steps[currentStepIndex].timer && (
-                <div className="mt-4 mb-6">
-                  {activeTimers[recipe.steps[currentStepIndex].id] ? (
-                    <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl">
-                      <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">
-                        {formatTime(timerSeconds[recipe.steps[currentStepIndex].id] || 0)}
-                      </div>
-                      <button
-                        onClick={() => stopTimer(recipe.steps[currentStepIndex].id)}
-                        className="px-8 py-4 bg-red-500 hover:bg-red-600 text-white rounded-full text-xl font-bold"
-                      >
-                        タイマー停止
-                      </button>
+              <div className="mt-4 mb-6">
+                {activeTimers[recipe.steps[currentStepIndex].id] ? (
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl">
+                    <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">
+                      {formatTime(timerSeconds[recipe.steps[currentStepIndex].id] || 0)}
                     </div>
-                  ) : (
                     <button
-                      onClick={() =>
-                        startTimer(recipe.steps[currentStepIndex].id, recipe.steps[currentStepIndex].timer!)
-                      }
-                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center text-xl font-bold"
+                      onClick={() => stopTimer(recipe.steps[currentStepIndex].id)}
+                      className="px-8 py-4 bg-red-500 hover:bg-red-600 text-white rounded-full text-xl font-bold"
                     >
-                      <Timer className="h-7 w-7 mr-2" />
-                      {Math.floor(recipe.steps[currentStepIndex].timer! / 60)}分
-                      {recipe.steps[currentStepIndex].timer! % 60 > 0
-                        ? `${recipe.steps[currentStepIndex].timer! % 60}秒`
-                        : ""}
-                      のタイマーをセット
+                      タイマー停止
                     </button>
-                  )}
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <>
+                    {recipe.steps[currentStepIndex].timer && (
+                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-lg font-bold">タイマー設定</h3>
+                          <button
+                            onClick={() =>
+                              startTimer(recipe.steps[currentStepIndex].id, recipe.steps[currentStepIndex].timer!)
+                            }
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold"
+                          >
+                            推奨: {Math.floor(recipe.steps[currentStepIndex].timer! / 60)}分
+                            {recipe.steps[currentStepIndex].timer! % 60 > 0
+                              ? `${recipe.steps[currentStepIndex].timer! % 60}秒`
+                              : ""}
+                          </button>
+                        </div>
+
+                        <div className="flex justify-center space-x-8">
+                          {/* 分の設定 */}
+                          <div className="flex flex-col items-center">
+                            <button
+                              onClick={increaseMinutes}
+                              className="w-6 h-6 flex items-center justify-center hover:opacity-80"
+                            >
+                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-black dark:border-b-white" />
+                            </button>
+                            <div className="my-2 text-2xl font-bold">{customTimerMinutes}</div>
+                            <button
+                              onClick={decreaseMinutes}
+                              className="w-6 h-6 flex items-center justify-center hover:opacity-80"
+                              disabled={customTimerMinutes <= 0}
+                            >
+                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[10px] border-t-black dark:border-t-white" />
+                            </button>
+                            <div className="mt-1 text-sm text-gray-500">分</div>
+                          </div>
+
+                          {/* 秒の設定 */}
+                          <div className="flex flex-col items-center">
+                            <button
+                              onClick={increaseSeconds}
+                              className="w-6 h-6 flex items-center justify-center hover:opacity-80"
+                            >
+                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-black dark:border-b-white" />
+                            </button>
+                            <div className="my-2 text-2xl font-bold">{customTimerSeconds}</div>
+                            <button
+                              onClick={decreaseSeconds}
+                              className="w-6 h-6 flex items-center justify-center hover:opacity-80"
+                              disabled={customTimerSeconds <= 0 && customTimerMinutes <= 0}
+                            >
+                              <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[10px] border-t-black dark:border-t-white" />
+                            </button>
+                            <div className="mt-1 text-sm text-gray-500">秒</div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={startCustomTimer}
+                          disabled={customTimerMinutes === 0 && customTimerSeconds === 0}
+                          className="w-full mt-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-full flex items-center justify-center text-lg font-bold"
+                        >
+                          <Timer className="h-5 w-5 mr-2" />
+                          タイマーをセット
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
               {/* ナビゲーションボタン */}
-              <div className="flex justify-between mt-8">
+              <div className="flex justify-between items-center mt-8">
                 <button
                   onClick={goToPrevStep}
                   disabled={currentStepIndex === 0}
-                  className="px-8 py-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full text-xl font-bold disabled:opacity-50"
+                  className="px-6 py-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full text-lg font-bold disabled:opacity-50"
                 >
                   前へ
                 </button>
+
+                <button
+                  onClick={isListening ? stopVoiceRecognition : startVoiceRecognition}
+                  className={`flex items-center justify-center px-6 py-4 rounded-full text-lg font-bold ${
+                    isListening ? "bg-red-500 text-white" : "bg-white text-gray-800 border-2 border-gray-300"
+                  }`}
+                  aria-label={isListening ? "音声認識を停止" : "音声で質問"}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff className="h-6 w-6 mr-2" />
+                      <span>停止</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-6 w-6 mr-2" />
+                      <span>質問</span>
+                    </>
+                  )}
+                </button>
+
                 <button
                   onClick={goToNextStep}
                   disabled={currentStepIndex === recipe.steps.length - 1}
-                  className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-full text-xl font-bold disabled:opacity-50"
+                  className="px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-full text-lg font-bold disabled:opacity-50"
                 >
                   次へ
                 </button>

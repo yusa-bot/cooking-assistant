@@ -5,6 +5,10 @@ import { ArrowLeft, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
+import { useAtom } from 'jotai'
+import { recipeAtom } from '@/store/recipeAtom'
+import { ingredientAtom } from '@/store/recipeAtom'
+import { RecipeTypes, GeneratedRecipeTypes, IngredientTypes } from '@/types/recipe'
 
 interface User {
   id: string
@@ -12,33 +16,33 @@ interface User {
   userName?: string
 }
 
-interface Ingredient {
-  name: string
-  amount: number
-  unit: string
-}
+// interface Ingredient {
+//   name: string
+//   amount: number
+//   unit: string
+// }
 
-interface Step {
-  instruction: string
-  step_number: number
-  timer?: string
-}
+// interface Step {
+//   instruction: string
+//   step_number: number
+//   timer?: string
+// }
 
-interface Recipe {
-  id: string
-  title: string
-  imageUrl?: string
-  description: string
-  ingredients?: Ingredient[]
-  steps?: Step[]
-  date: string
-  difficulty?: string
-  cookingTime?: string
-}
+// interface Recipe {
+//   id: string
+//   title: string
+//   imageUrl?: string
+//   description: string
+//   ingredients?: Ingredient[]
+//   steps?: Step[]
+//   date: string
+//   difficulty?: string
+//   cookingTime?: string
+// }
 
-interface ApiResponse {
-  recipes: Recipe[]
-}
+// interface ApiResponse {
+//   recipes: Recipe[]
+// }
 
 export default function RecipesPage() {
   const router = useRouter()
@@ -47,6 +51,8 @@ export default function RecipesPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [user,setUser] = useState<User>()
+  const [recipe, setRecipe] = useAtom(recipeAtom)
+  const [ingredient, setIngredient] = useAtom(ingredientAtom)
 
   // ログイン
   useEffect(() => {
@@ -67,25 +73,40 @@ export default function RecipesPage() {
 
   useEffect(() => {
     if (!token) return
-    const fetchRecipes = async () => {
-      const res = await fetch("/api/ai/generate")
+
+    //レシピ候補配列ganerate
+    const generateRecipes = async (ingredient: any) => {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredient }),
+      });
+      if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
       const data: ApiResponse = await res.json()
       setRecipes(data.recipes || [])
     }
-    fetchRecipes()
+    generateRecipes(ingredient)
   }, [])
+
+  // 選んだタイミング→jotai
+  // history→jotai 写真のurl
+  // memo,isFavorite→jotai
+  // 保存ボタンでDB保存
 
   useEffect(() => {
     if (selectedRecipeId === null) return
 
     const fetchRecipe = () => {
-      setSelectedRecipe(setRecipes[selectedRecipeId])
+      setSelectedRecipe(recipes[selectedRecipeId])
     }
     fetchRecipe()
   }, [selectedRecipeId])
 
   const startCooking = (recipeId: string) => {
     // 遷移元を記録
+
+    setRecipe(selectedRecipe) //jotai
+
     localStorage.setItem("recipeSource", "recipes")
     router.push(`/recipes/${recipeId}/steps`)
   }

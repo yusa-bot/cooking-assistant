@@ -6,6 +6,8 @@ import { ArrowLeft, Plus, X, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
+import { useAtom } from 'jotai'
+import { ingredientAtom } from '@/store/recipeAtom'
 
 interface User {
   id: string
@@ -28,6 +30,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const router = useRouter()
+  const [ingredient, setIngredient] = useAtom(ingredientAtom)
 
   // ログイン
   useEffect(() => {
@@ -215,16 +218,12 @@ export default function IngredientsPage({ capturedImage }: Props) {
     }
   }, [])
 
+
   // レシピ提案ページに進む
-  const goToRecipes = async () => {
-    // 材料リストをAPIに送信 受け取れてるかな？
-    await fetch("/api/recipe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({newIngredient})
-    })
-    router.push("/recipes")
+  const goToRecipes = async (newIngredient: any) => {
+    setIngredient(newIngredient)
   }
+
 
   // モーダルを閉じる
   const closeLoginModal = () => {
