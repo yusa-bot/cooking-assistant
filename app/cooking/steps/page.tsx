@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff } from "lucide-react"
+import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff, PlayCircle } from "lucide-react"
 import TimerUI, { TimerUIRef } from "@/components/ui/TimerUI"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
@@ -42,9 +42,57 @@ export default function RecipeStepsPage() {
   const [showAiAnswer, setShowAiAnswer] = useState(false)
   const [isPausedForSpeech, setIsPausedForSpeech] = useState(false)
   const initialLoadRef = useRef(true)
+  // 音声システムが初期化されたかどうかを追跡
+  const [isAudioInitialized, setIsAudioInitialized] = useState(false)
+  // 調理開始画面が表示されているかどうか
+  const [showStartCookingOverlay, setShowStartCookingOverlay] = useState(true)
   
   // TimerUI の参照を保持するための ref
   const timerRef = useRef<TimerUIRef | null>(null)
+
+  // 音声システムを初期化する関数
+  const initializeAudioSystem = () => {
+    // ダミーの音声出力を生成して初期化
+    if (!isAudioInitialized) {
+      const synth = getSpeechSynthesis()
+      // 空のテキストを読み上げる試み（多くのブラウザでこれが音声APIの初期化として機能する）
+      const utterance = new SpeechSynthesisUtterance("")
+      window.speechSynthesis.speak(utterance)
+      
+      // 空の音声コンテキストを作成して初期化
+      try {
+        const audioCtx = new AudioContext()
+        // 一時的に無音を鳴らす
+        const oscillator = audioCtx.createOscillator()
+        const gainNode = audioCtx.createGain()
+        gainNode.gain.value = 0 // 無音
+        oscillator.connect(gainNode)
+        gainNode.connect(audioCtx.destination)
+        oscillator.start()
+        oscillator.stop(audioCtx.currentTime + 0.001)
+      } catch (e) {
+        console.error("Audio initialization failed:", e)
+      }
+      
+      setIsAudioInitialized(true)
+    }
+  }
+
+  // 調理開始ハンドラー
+  const handleStartCooking = () => {
+    // 音声システムを初期化
+    initializeAudioSystem();
+    // オーバーレイを非表示に
+    setShowStartCookingOverlay(false);
+    
+    // 少し遅延を入れてから最初のステップの指示を読み上げる
+    setTimeout(() => {
+      if (recipe && recipe.steps && recipe.steps[currentStepIndex]) {
+        const synth = getSpeechSynthesis();
+        synth.speak(recipe.steps[currentStepIndex].instruction, "ja-JP", true);
+      }
+    }, 500);
+  }
 
   if (!recipe) return <p>レシピがありません</p>
 
@@ -181,10 +229,31 @@ export default function RecipeStepsPage() {
   }, [step, recipe])
 
   return (
-    <main className="flex min-h-screen flex-col p-4 md:p-8">
+    <main className="flex min-h-screen flex-col p-4 md:p-8 relative">
+      {/* 調理開始オーバーレイ */}
+      {showStartCookingOverlay && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl max-w-md w-full text-center">
+            <h2 className="text-2xl font-bold mb-4">{recipe.title}</h2>
+            <p className="mb-6 text-gray-600 dark:text-gray-300">調理を開始する準備ができましたか？</p>
+            <p className="mb-6 text-gray-500 dark:text-gray-400 text-sm">
+              ※ ボタンをタップすると音声ガイドが始まります
+            </p>
+            <button
+              onClick={handleStartCooking}
+              className="w-full py-4 px-6 bg-green-600 text-white rounded-full flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
+            >
+              <PlayCircle className="h-6 w-6" />
+              調理を開始する
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="flex items-center justify-center sticky top-0 bg-gray-50 p-4 z-10">        
         <h1 className="text-3xl font-semibold text-green-700">{recipe.title}</h1>        
       </header>
+      
       <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
         <div className="mb-4 flex items-center">
           
@@ -194,7 +263,11 @@ export default function RecipeStepsPage() {
                 <div className="w-6 h-px bg-gray-300 mx-2" />
               )}
               <button
-                onClick={() => setCurrentStepIndex(idx)}
+                onClick={() => {
+                  setCurrentStepIndex(idx);
+                  // ステップ変更時に音声システムを初期化
+                  initializeAudioSystem();
+                }}
                 className={`
                   w-10 h-10 flex items-center justify-center rounded-full font-semibold
                   ${idx === currentStepIndex
@@ -251,7 +324,15 @@ export default function RecipeStepsPage() {
           
 
           <div className="mt-8 flex items-center justify-between gap-4">
-            <button onClick={goToPrevStep} disabled={currentStepIndex===0} className="px-6 py-3 bg-gray-200 rounded-full">
+            <button 
+              onClick={() => {
+                goToPrevStep();
+                // 前へボタンクリック時に音声システムを初期化
+                initializeAudioSystem();
+              }} 
+              disabled={currentStepIndex===0} 
+              className="px-6 py-3 bg-gray-200 rounded-full"
+            >
               前へ
             </button>
             <button
@@ -264,6 +345,9 @@ export default function RecipeStepsPage() {
               `}
               disabled={isPausedForSpeech}
               onClick={() => {
+                // マイクボタンクリック時に音声システムを初期化
+                initializeAudioSystem();
+                
                 if (isPausedForSpeech) return;
                 const recognition = getSpeechRecognition();
                 if (isListening) {
@@ -281,6 +365,8 @@ export default function RecipeStepsPage() {
                         goToPrevStep,
                         setAiAnswer,
                         setShowAiAnswer,
+                        startTimer,
+                        stopTimer,
                       });
                     },
                     (error: any) => {
@@ -299,7 +385,15 @@ export default function RecipeStepsPage() {
                 <Mic className="h-6 w-6 text-green-600" />
               )}
             </button>
-            <button onClick={goToNextStep} disabled={currentStepIndex===recipe.steps.length-1} className="px-6 py-3 bg-green-600 text-white rounded-full">
+            <button 
+              onClick={() => {
+                goToNextStep();
+                // 次へボタンクリック時に音声システムを初期化
+                initializeAudioSystem();
+              }} 
+              disabled={currentStepIndex===recipe.steps.length-1} 
+              className="px-6 py-3 bg-green-600 text-white rounded-full"
+            >
               次へ
             </button>
           </div>
