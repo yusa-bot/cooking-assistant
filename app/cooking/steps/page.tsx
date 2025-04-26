@@ -224,9 +224,54 @@ export default function RecipeStepsPage() {
           </section>
           
 
-          <div className="mt-8 flex justify-between">
+          <div className="mt-8 flex items-center justify-between gap-4">
             <button onClick={goToPrevStep} disabled={currentStepIndex===0} className="px-6 py-3 bg-gray-200 rounded-full">
               前へ
+            </button>
+            <button
+              type="button"
+              aria-label={isPausedForSpeech ? "マイク停止中" : (isListening ? "録音中（クリックで停止）" : "マイク待機中（クリックで録音開始）")}
+              className={`
+                px-6 py-3 rounded-full flex items-center justify-center transition
+                ${isPausedForSpeech ? "bg-gray-300" : isListening ? "bg-red-600 animate-pulse" : "bg-gray-200"}
+                ${isPausedForSpeech ? "cursor-not-allowed" : "cursor-pointer"}
+              `}
+              disabled={isPausedForSpeech}
+              onClick={() => {
+                if (isPausedForSpeech) return;
+                const recognition = getSpeechRecognition();
+                if (isListening) {
+                  recognition.stopListening();
+                  setIsListening(false);
+                } else {
+                  recognition.startListening(
+                    (text: string) => {
+                      setVoiceQuestion(text);
+                      handleVoiceQuery({
+                        text,
+                        step,
+                        recipeInformation: recipe,
+                        goToNextStep,
+                        goToPrevStep,
+                        setAiAnswer,
+                        setShowAiAnswer,
+                      });
+                    },
+                    (error: any) => {
+                      console.error("音声認識エラー:", error);
+                    }
+                  );
+                  setIsListening(true);
+                }
+              }}
+            >
+              {isPausedForSpeech ? (
+                <MicOff className="h-6 w-6 text-gray-400" />
+              ) : isListening ? (
+                <Mic className="h-6 w-6 text-white" />
+              ) : (
+                <Mic className="h-6 w-6 text-green-600" />
+              )}
             </button>
             <button onClick={goToNextStep} disabled={currentStepIndex===recipe.steps.length-1} className="px-6 py-3 bg-green-600 text-white rounded-full">
               次へ
@@ -250,16 +295,7 @@ export default function RecipeStepsPage() {
         )}
       </div>
       
-      {/* マイク状態インジケーターを追加 */}
-      <div className="fixed bottom-16 right-6 flex items-center justify-center p-2 rounded-full bg-white shadow-md">
-        {isPausedForSpeech ? (
-          <MicOff className="h-6 w-6 text-gray-400" />
-        ) : (
-          <Mic className="h-6 w-6 text-green-600" />
-        )}
-      </div>
       
     </main>
   )
 }
-
