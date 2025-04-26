@@ -8,6 +8,7 @@ import RecipePopup from "@/components/recipe-popup"
 import { useAtom } from 'jotai'
 import { generatedRecipesAtom, currentRecipeAtom } from '@/lib/atoms'
 import { RecipeTypes, GeneratedRecipeTypes, IngredientTypes } from '@/types/recipeTypes'
+import { set } from "zod"
 
 interface User {
   id: string
@@ -50,7 +51,7 @@ export default function RecipesPage() {
   //idの割り当てのためにtypesのidの?消しちゃった
   const startCooking = () => {    
     setCurrentRecipe(selectedRecipe);
-    router.push(`/recipes/steps`)
+    router.push(`/cooking/steps`)
   }
 
   return (
@@ -109,7 +110,7 @@ export default function RecipesPage() {
         recipe={{
           ...selectedRecipe,
         }}
-        onClose={() => setIsRecipePopupOpen(false)}
+        onClose={() => setSelectedRecipe(null)}
         onStartCooking={() => startCooking()}
       />
     )}
