@@ -3,7 +3,7 @@
 import React from "react"
 import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff } from "lucide-react"
-import TimerUI from "@/components/ui/TimerUI"
+import TimerUI, { TimerUIRef } from "@/components/ui/TimerUI"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { getSpeechRecognition } from "@/utils/speech-recognition"
@@ -42,6 +42,9 @@ export default function RecipeStepsPage() {
   const [showAiAnswer, setShowAiAnswer] = useState(false)
   const [isPausedForSpeech, setIsPausedForSpeech] = useState(false)
   const initialLoadRef = useRef(true)
+  
+  // TimerUI の参照を保持するための ref
+  const timerRef = useRef<TimerUIRef | null>(null)
 
   if (!recipe) return <p>レシピがありません</p>
 
@@ -49,6 +52,19 @@ export default function RecipeStepsPage() {
 
   const goToNextStep = () => setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
   const goToPrevStep = () => setCurrentStepIndex(i => Math.max(i - 1, 0))
+  
+  // TimerUI を制御する関数
+  const startTimer = () => {
+    if (timerRef.current) {
+      timerRef.current.start()
+    }
+  }
+  
+  const stopTimer = () => {
+    if (timerRef.current) {
+      timerRef.current.stop()
+    }
+  }
   
   // 音声合成と音声認識の調整 - システム音声出力中は音声認識を一時停止する
   useEffect(() => {
@@ -125,6 +141,8 @@ export default function RecipeStepsPage() {
         goToPrevStep,
         setAiAnswer,
         setShowAiAnswer,
+        startTimer, // タイマー開始関数を渡す
+        stopTimer,  // タイマー停止関数を渡す
       })
       // 継続モードなので再起動は不要
     }
@@ -215,7 +233,20 @@ export default function RecipeStepsPage() {
 
           {/* タイマーUI */}
           <section aria-labelledby="timer-section" className="mb-6 w-full h-[10rem]">
-            {step.timer && <TimerUI initialTime={step.timer} />}
+            {step.timer && (
+              <TimerUI 
+                initialTime={step.timer}
+                ref={(el) => {
+                  // TimerUIのrefを通じてstart/stopメソッドにアクセス
+                  if (el) {
+                    timerRef.current = {
+                      start: () => el.start && el.start(),
+                      stop: () => el.stop && el.stop()
+                    };
+                  }
+                }}
+              />
+            )}
           </section>
           
 

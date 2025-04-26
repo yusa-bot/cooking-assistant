@@ -9,6 +9,8 @@ export type HandleVoiceQueryParams = {
   goToPrevStep: () => void;
   setAiAnswer: (answer: string) => void;
   setShowAiAnswer: (show: boolean) => void;
+  startTimer?: () => void; // タイマー開始用の関数
+  stopTimer?: () => void; // タイマー停止用の関数
 };
 export async function handleVoiceQuery({
     text,
@@ -18,6 +20,8 @@ export async function handleVoiceQuery({
     goToPrevStep,
     setAiAnswer,
     setShowAiAnswer,
+    startTimer,
+    stopTimer,
 }: HandleVoiceQueryParams) {
     // 空文字の場合は何もしない
     if (!text || text.trim() === "") {
@@ -32,6 +36,27 @@ export async function handleVoiceQuery({
     if (text.includes("戻る")) {
         goToPrevStep();
         return;
+    }
+
+    // タイマー関連のコマンド
+    if ((text.includes("タイマー") || text.includes("タイム")) && 
+        (text.includes("スタート") || text.includes("開始") || text.includes("始める"))) {
+        if (startTimer) {
+            startTimer();
+            setAiAnswer("タイマーをスタートしました");
+            setShowAiAnswer(true);
+            return;
+        }
+    }
+    
+    if ((text.includes("タイマー") || text.includes("タイム")) && 
+        (text.includes("ストップ") || text.includes("停止") || text.includes("止める"))) {
+        if (stopTimer) {
+            stopTimer();
+            setAiAnswer("タイマーを停止しました");
+            setShowAiAnswer(true);
+            return;
+        }
     }
     // ...他のキーワードがあればここに追加...
 

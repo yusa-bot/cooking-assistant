@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useRef } from "react"
+import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from "react"
 import { Plus, Minus, Play, Square } from "lucide-react"
 import { TimerLogic } from "@/utils/timerLogic"
 
@@ -8,7 +8,12 @@ interface TimerUIProps {
   initialTime?: string
 }
 
-export default function TimerUI({ initialTime }: TimerUIProps) {
+export interface TimerUIRef {
+  start: () => void;
+  stop: () => void;
+}
+
+const TimerUI = forwardRef<TimerUIRef, TimerUIProps>(function TimerUI({ initialTime }, ref) {
   if (!initialTime) return null
 
   const [minutes, setMinutes] = useState<number>(() => {
@@ -75,6 +80,12 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
 
   const start = () => { timerRef.current?.start(); setRunning(true) }
   const stop = () => { timerRef.current?.stop(); setRunning(false) }
+
+  // ref を通して start と stop メソッドを公開
+  useImperativeHandle(ref, () => ({
+    start,
+    stop
+  }));
 
   const adjustMinutes = (delta: number) =>
     setMinutes(m => Math.min(59, Math.max(0, m + delta)))
@@ -152,4 +163,6 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
       </div>
     </div>
   )
-}
+})
+
+export default TimerUI
