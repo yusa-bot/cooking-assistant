@@ -86,14 +86,33 @@ export class SpeechRecognitionManager {
       }
     }
 
+    // no-speech再開用フラグ
+    let restartAfterNoSpeech = false;
+
     // エラーイベントのハンドラ
     this.recognition.onerror = (event) => {
+      if (event.error === "no-speech") {
+        // no-speechエラーはonendで再開
+        restartAfterNoSpeech = true;
+        return;
+      }
       this.isListening = false
       if (onError) onError(event.error)
     }
 
     // 終了イベントのハンドラ
     this.recognition.onend = () => {
+      if (restartAfterNoSpeech) {
+        restartAfterNoSpeech = false;
+        try {
+          this.recognition?.start();
+          // isListeningは維持
+        } catch (e) {
+          this.isListening = false;
+          if (onError) onError(e);
+        }
+        return;
+      }
       this.isListening = false
     }
 
