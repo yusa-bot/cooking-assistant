@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, X, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
+import Loading from "@/components/Loading"
 import { useAtom } from 'jotai'
 import { ingredientListAtom,generatedRecipesAtom } from '@/lib/atoms'
 import { IngredientTypes } from '@/types/recipeTypes' // <IngredientTypes[]>
@@ -40,6 +41,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
   const router = useRouter()
 
   const [, setGeneratedRecipes] = useAtom(generatedRecipesAtom) // <RecipeTypes[]>
+  const [isLoading, setIsLoading] = useState(false)
 
   // ログイン
   useEffect(() => {
@@ -142,17 +144,22 @@ export default function IngredientsPage({ capturedImage }: Props) {
 
   // レシピ提案ページに進む
   const goToRecipes = async () => {
-    setcurrentIngredient(ingredientList) // <IngredientTypes[]>
-    const res = await fetch('/api/ai/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentIngredient: ingredientList }),
-    });
-    if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
+    setIsLoading(true)
+    try {
+      setcurrentIngredient(ingredientList) // <IngredientTypes[]>
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentIngredient: ingredientList }),
+      });
+      if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
 
-    const data = await res.json()
-    setGeneratedRecipes(data)
-    router.push("/recipes")
+      const data = await res.json()
+      setGeneratedRecipes(data)
+      router.push("/recipes")
+    } finally {
+      
+    }
   }
 
 
@@ -164,6 +171,15 @@ export default function IngredientsPage({ capturedImage }: Props) {
 
   if (!isLoggedIn && !showLoginModal) {
     return null // ログインモーダルが表示される前は何も表示しない
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <Loading />
+        <p className="mt-4 text-lg font-bold text-green-700 dark:text-green-700">レシピを生成中...</p>
+      </div>
+    )
   }
 
   return (
@@ -185,112 +201,94 @@ export default function IngredientsPage({ capturedImage }: Props) {
           <h2 className="text-xl font-bold mb-5 text-green-700 dark:text-green-400 tracking-wide flex items-center">
             材料リスト
           </h2>
-
           {ingredientList.length > 0 ? (
-            <div className="overflow-x-auto w-full mb-6">
-              <table className="min-w-full table-auto border-separate border-spacing-y-3">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-700">
-                    <th className="px-3 py-3 text-left text-sm md:text-base font-medium text-gray-700 dark:text-gray-200 rounded-l-lg">名前</th>
-                    <th className="px-3 py-3 text-left text-sm md:text-base font-medium text-gray-700 dark:text-gray-200">量</th>
-                    <th className="px-3 py-3 text-left text-sm md:text-base font-medium text-gray-700 dark:text-gray-200">単位</th>
-                    <th className="w-12 px-2 py-3 rounded-r-lg"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ingredientList.map((item, index) => (
-                    <tr key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors">
-                      <td className="px-3 py-2.5 text-sm md:text-base rounded-l-lg">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => updateIngredient(index, 'name', e.target.value)}
-                          className="w-full bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100"
-                        />
-                      </td>
-                      <td className="px-3 py-2.5 text-sm md:text-base">
-                        <input
-                          type="text"
-                          value={item.amount || ''}
-                          onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
-                          className="w-full bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100"
-                        />
-                      </td>
-                      <td className="px-3 py-2.5 text-sm md:text-base">
-                        <input
-                          type="text"
-                          value={item.unit || ''}
-                          onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                          className="w-full bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100"
-                        />
-                      </td>
-                      <td className="px-3 py-2.5 text-sm md:text-base rounded-r-lg">
-                        <button
-                          onClick={() => removeIngredient(index)}
-                          className="rounded-full p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center"
-                          aria-label={`${item.name}を削除`}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <ul className="mb-6 space-y-3">
+            <li className="flex items-center bg-transparent px-1 text-xs text-gray-500 dark:text-gray-400 font-semibold space-x-3 mb-0 pb-0" style={{ marginBottom: '-0.25rem' }}>
+              <span className="flex-1 min-w-0">材料名</span>
+              <span className="w-8 text-center">量</span>
+              <span className="w-8 text-center">単位</span>
+              <span className="w-8"></span>
+            </li>
+            {ingredientList.map((item, index) => (
+            <li
+            key={index}
+            className="flex items-center bg-gray-50 dark:bg-gray-700/50 rounded-xl  py-1 shadow-sm space-x-3"
+            >
+            <input
+            type="text"
+            value={item.name}
+            onChange={(e) => updateIngredient(index, 'name', e.target.value)}
+            className="flex-1 min-w-0 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100 text-sm md:text-base"
+            placeholder="材料名"
+            />
+            <input
+            type="text"
+            value={item.amount || ''}
+            onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
+            className="w-8 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100 text-sm md:text-base"
+            placeholder="量"
+            />
+            <input
+            type="text"
+            value={item.unit || ''}
+            onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+            className="w-8 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100 text-sm md:text-base"
+            placeholder="単位"
+            />
+            <button
+            onClick={() => removeIngredient(index)}
+            className="rounded-full p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center"
+            aria-label={`${item.name}を削除`}
+            >
+            <X className="h-4 w-4" />
+            </button>
+            </li>
+              ))}
+            </ul>
           ) : (
             <div className="text-gray-500 dark:text-gray-400 mb-6 text-center py-8 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm md:text-base flex flex-col items-center space-y-2">
               <span>材料が登録されていません</span>
               <span className="text-sm text-gray-400 dark:text-gray-500">下のフォームから追加してください</span>
             </div>
           )}
-
-          <div className="mt-6 bg-gray-50 dark:bg-gray-700/40 p-5 rounded-xl shadow-sm">
+          <div className="mt-6 bg-gray-50 dark:bg-gray-700/40  rounded-xl shadow-sm">
             <h3 className="text-base font-medium mb-3 text-gray-700 dark:text-gray-200">新しい材料を追加</h3>
             <div className="flex flex-col space-y-3">
-              <div className="grid grid-cols-12 gap-2 md:gap-3">
-                <div className="col-span-5">
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={newIngredient.name}
-                    onChange={(e) => handleInputChange(e, 'name')}
-                    placeholder="材料名"
-                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 text-sm md:text-base transition-shadow"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    type="text"
-                    value={newIngredient.amount || ''}
-                    onChange={(e) => handleInputChange(e, 'amount')}
-                    placeholder="量"
-                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 text-sm md:text-base transition-shadow"
-                  />
-                </div>
-                <div className="col-span-3">
-                  <input
-                    type="text"
-                    value={newIngredient.unit || ''}
-                    onChange={(e) => handleInputChange(e, 'unit')}
-                    placeholder="単位"
-                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 text-sm md:text-base transition-shadow"
-                  />
-                </div>
-                <div className="col-span-1">
-                  <button
-                    onClick={() => {
-                      if (newIngredient && newIngredient.name) {
-                        addIngredient(newIngredient);
-                      }
-                    }}
-                    className="w-full h-full px-2 py-1 bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-colors"
-                    disabled={!newIngredient.name}
-                    aria-label="材料を追加"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
-                </div>
+              <div className="flex items-center space-x-3">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={newIngredient.name}
+                  onChange={(e) => handleInputChange(e, 'name')}
+                  placeholder="材料名"
+                  className="flex-1 min-w-0 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100 text-sm md:text-base"
+                />
+                <input
+                  type="text"
+                  value={newIngredient.amount || ''}
+                  onChange={(e) => handleInputChange(e, 'amount')}
+                  placeholder="量"
+                  className="w-8 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100 text-sm md:text-base"
+                />
+                <input
+                  type="text"
+                  value={newIngredient.unit || ''}
+                  onChange={(e) => handleInputChange(e, 'unit')}
+                  placeholder="単位"
+                  className="w-8 bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100 text-sm md:text-base"
+                />
+                <button
+                  onClick={() => {
+                    if (newIngredient && newIngredient.name) {
+                      addIngredient(newIngredient);
+                    }
+                  }}
+                  className="rounded-full p-1.5 bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
+                  disabled={!newIngredient.name}
+                  aria-label="材料を追加"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
