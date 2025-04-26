@@ -62,6 +62,17 @@ export default function RecipeStepsPage() {
   const goToNextStep = () => setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
   const goToPrevStep = () => setCurrentStepIndex(i => Math.max(i - 1, 0))
 
+  useEffect(() => {
+    if (step && step.instruction) {
+      const synth = getSpeechSynthesis()
+      if (synth.getIsSpeaking()) {
+        synth.stop()
+      }
+      speakInstruction(step.instruction)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStepIndex])
+
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <header className="flex items-center justify-center sticky top-0 bg-gray-50 p-4 z-10">        
