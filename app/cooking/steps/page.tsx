@@ -8,14 +8,14 @@ import { useRouter } from "next/navigation"
 import { getSpeechRecognition } from "@/utils/speech-recognition"
 import { getSpeechSynthesis } from "@/utils/speech-synthesis"
 import { useAtom } from 'jotai'
-import { recipeAtom } from '@/store/recipeAtom'
+import { currentRecipeAtom } from "@/lib/atoms"
 import { RecipeTypes } from "@/types/recipeTypes"
 import { handleVoiceQuery } from "@/lib/handleVoiceQuery"
 
 
 export default function RecipeStepsPage() {  
   const router = useRouter()
-  const [recipe] = useAtom(recipeAtom)
+  const [recipe] = useAtom(currentRecipeAtom)
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isListening, setIsListening] = useState(false)
