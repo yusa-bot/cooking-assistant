@@ -78,6 +78,35 @@ export default function RecipeStepsPage() {
     }
   }
 
+  // マイクの状態を定期的にチェックする関数
+  const checkMicrophoneStatus = () => {
+    const recognition = getSpeechRecognition();
+    // マイクが切れていて、音声出力中でもない場合は再開
+    if (!recognition.getIsListening() && !isPausedForSpeech) {
+      console.log("マイクが切れていたので再開します");
+      recognition.startListening(
+        (text: string) => {
+          setVoiceQuestion(text);
+          handleVoiceQuery({
+            text,
+            step,
+            recipeInformation: recipe,
+            goToNextStep,
+            goToPrevStep,
+            setAiAnswer,
+            setShowAiAnswer,
+            startTimer,
+            stopTimer,
+          });
+        },
+        (error: any) => {
+          console.error("音声認識エラー:", error);
+        }
+      );
+      setIsListening(true);
+    }
+  }
+
   // 調理開始ハンドラー
   const handleStartCooking = () => {
     // 音声システムを初期化
@@ -227,6 +256,22 @@ export default function RecipeStepsPage() {
       setIsListening(false)
     }
   }, [step, recipe])
+
+  // 定期的にマイクの状態をチェックする
+  useEffect(() => {
+    // 音声システムが初期化されている場合のみ実行
+    if (!isAudioInitialized || showStartCookingOverlay) return;
+    
+    // 定期的にマイク状態をチェック (10秒ごと)
+    const intervalId = setInterval(() => {
+      checkMicrophoneStatus();
+    }, 10000);
+    
+    // クリーンアップ関数
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isAudioInitialized, showStartCookingOverlay, isPausedForSpeech]);
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8 relative">
