@@ -21,7 +21,42 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
   })
   const [display, setDisplay] = useState<string>(initialTime)
   const [running, setRunning] = useState<boolean>(false)
+
+  // よりアラーム感の強いビープ音
+  const playBeep = () => {
+    const ctx = new AudioContext()
+    // 連続した高低音を交互に鳴らす
+    const pattern = [
+      { freq: 1500, dur: 0.18 },
+      { freq: 900, dur: 0.18 },
+      { freq: 1500, dur: 0.18 },
+      { freq: 900, dur: 0.18 },
+      { freq: 1500, dur: 0.18 },
+      { freq: 900, dur: 0.18 },
+    ]
+    let t = ctx.currentTime
+    for (const { freq, dur } of pattern) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = "square"
+      osc.frequency.setValueAtTime(freq, t)
+      gain.gain.setValueAtTime(1, t)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(t)
+      osc.stop(t + dur)
+      t += dur
+    }
+  }
+
   const timerRef = useRef<TimerLogic>()
+
+  useEffect(() => {
+    const [m, s] = initialTime.split(":").map(Number)
+    setMinutes(isNaN(m) ? 0 : m)
+    setSeconds(isNaN(s) ? 0 : s)
+  }, [initialTime])
 
   useEffect(() => {
     timerRef.current?.stop()
@@ -30,7 +65,7 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
     timerRef.current = new TimerLogic(
       t,
       rem => setDisplay(rem),
-      () => setRunning(false)
+      () => { playBeep(); setRunning(false) }
     )
   }, [minutes, seconds])
 
@@ -69,10 +104,16 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
       </div>
 
       {/* 時間表示 */}
-      <div className="text-5xl font-bold tracking-widest flex items-center">
-        <span>{display.split(":")[0]}</span>
-        <span className="mx-11">:</span>
-        <span>{display.split(":")[1]}</span>
+      <div className="flex flex-1 items-center justify-center w-full">
+        <div className="mx-auto text-5xl font-bold tracking-widest flex items-center font-mono tabular-nums">
+          <span className=" text-center flex justify-center">
+        {display.split(":")[0].padStart(2, "0")}
+          </span>
+          <span className="px-12 flex justify-center">:</span>
+          <span className="w-[2ch] text-center flex justify-center">
+        {display.split(":")[1].padStart(2, "0")}
+          </span>
+        </div>
       </div>
 
       {/* ±ボタン */}
