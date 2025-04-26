@@ -102,6 +102,16 @@ export class SpeechRecognitionManager {
       this.recognition.start()
     } catch (error) {
       this.isListening = false
+      if (
+        error instanceof DOMException &&
+        error.name === "InvalidStateError"
+      ) {
+        // 状態がずれている場合は少し待って再試行
+        setTimeout(() => {
+          this.startListening(onResult, onError)
+        }, 300)
+        return
+      }
       if (onError) onError(error)
     }
   }

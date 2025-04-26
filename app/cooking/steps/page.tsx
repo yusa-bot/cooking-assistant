@@ -21,7 +21,7 @@ const dummyRecipe: RecipeTypes = {
   ],
   steps: [
     { instruction: "まずは野菜を切りましょう", step_number: 1, timer: "" },
-    { instruction: "Dummy Step 2stertrtretewrtergtretereroiterjtioeroierbgerhjriwabfierhgierhrjebvdfjrretrtewtrwegregfrfdsfgrebrejddvdfgerkweivn", step_number: 2, timer: "02:00" },
+    { instruction: "いい感じに来てね", step_number: 2, timer: "02:00" },
     { instruction: "Dummy Step 2", step_number: 3, timer: "10:00" },
   ],
   is_favorite: false,
