@@ -6,9 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
 import { useAtom } from 'jotai'
-import { recipeAtom } from '@/store/recipeAtom'
-import { ingredientAtom } from '@/store/recipeAtom'
-import { RecipeTypes, GeneratedRecipeTypes, IngredientTypes } from '@/types/recipe'
+import { recipeListAtom, currentRecipeAtom } from '@/lib/atoms'
+import { RecipeTypes, GeneratedRecipeTypes, IngredientTypes } from '@/types/recipeTypes'
 
 interface User {
   id: string
@@ -19,13 +18,12 @@ interface User {
 
 export default function RecipesPage() {
   const router = useRouter()
-  const [recipes, setRecipes] = useState<RecipeTypes[]>([])
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
-  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [user,setUser] = useState<User>()
-  const [recipe, setRecipe] = useAtom(recipeAtom)
-  const [ingredient, setIngredient] = useAtom(ingredientAtom)
+  const [recipes, setRecipes] = useAtom(recipeListAtom)
+  const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
+  const [isRecipePopupOpen, setIsRecipePopupOpen] = useState(false)
 
   // ログイン
   useEffect(() => {
@@ -44,43 +42,13 @@ export default function RecipesPage() {
     fetchUser()
   },[router])
 
-  useEffect(() => {
-    if (!token) return
-
-    //レシピ候補配列ganerate
-    const generateRecipes = async (ingredient: any) => {
-      const res = await fetch('/api/ai/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredient }),
-      });
-      if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
-      const data: RecipeTypes[] = await res.json()
-      setRecipes(data || [])
-    }
-    generateRecipes(ingredient)
-  }, [])
-
   // 選んだタイミング→jotai
   // history→jotai 写真のurl
   // memo,isFavorite→jotai
   // 保存ボタンでDB保存
 
-  useEffect(() => {
-    if (selectedRecipeId === null) return
-
-    const fetchRecipe = () => {
-      setSelectedRecipe(recipes[selectedRecipeId])
-    }
-    fetchRecipe()
-  }, [selectedRecipeId])
-
+  //idの割り当てのためにtypesのidの?消しちゃった
   const startCooking = (recipeId: string) => {
-    // 遷移元を記録
-
-    setRecipe(selectedRecipe) //jotai
-
-    localStorage.setItem("recipeSource", "recipes")
     router.push(`/recipes/${recipeId}/steps`)
   }
 
@@ -106,7 +74,7 @@ export default function RecipesPage() {
             <div
               key={recipe.id}
               className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setSelectedRecipe(recipe)}
+              onClick={() => setCurrentRecipe(recipe)}
             >
               <div className="p-4">
                 <h2 className="text-xl font-medium">{recipe.title}</h2>
@@ -125,15 +93,60 @@ export default function RecipesPage() {
           </div>
         )}
       </div>
-      {selectedRecipe && (
+      {currentRecipe && (
         <RecipePopup
         recipe={{
-          ...selectedRecipe,
+          ...currentRecipe,
         }}
-        onClose={() => setSelectedRecipe(null)}
-        onStartCooking={() => startCooking(selectedRecipe.id)}
+        onClose={() => setIsRecipePopupOpen(false)}
+        onStartCooking={() => startCooking(currentRecipe.id)}
       />
     )}
     </main>
   )
 }
+
+
+// return (
+//   <main>
+
+//     <header>
+//       <Link href="/ingredients"> <ArrowLeft/><span>戻る</span> </Link>
+//       <h1>おすすめレシピ</h1>
+//     </header>
+
+//     <div>
+//       <p>あなたの材料から作れるレシピです</p>
+
+//       <div>
+//         {recipes.map((recipe) => (
+//           <div key={recipe.id} onClick={() => setCurrentRecipe(recipe)}>
+//             <div>
+//               <h2>{recipe.title}</h2>
+//               <p>{recipe.description}</p>
+//             </div>
+//           </div>
+//         ))}
+//       </div>
+
+//       {recipes.length === 0 && (
+//         <div>
+//           <p>
+//             レシピが見つかりませんでした。別の材料を試してみてください。
+//           </p>
+//         </div>
+//       )}
+//     </div>
+
+//     {selectedRecipe && (
+//       <RecipePopup
+//       recipe={{
+//         ...selectedRecipe,
+//       }}
+//       onClose={() => setSelectedRecipe(null)}
+//       onStartCooking={() => startCooking(selectedRecipe.id)}
+//     />
+//   )}
+//   </main>
+// )
+
