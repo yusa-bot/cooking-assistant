@@ -1,16 +1,16 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Volume2, Mic, Timer as TimerIcon, Check, X, MicOff } from "lucide-react"
 import TimerUI from "@/components/ui/TimerUI"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { getSpeechRecognition } from "@/utils/speech-recognition"
-import { getAnswerForQuestion } from "@/utils/cooking-ai"
 import { getSpeechSynthesis } from "@/utils/speech-synthesis"
 import { useAtom } from 'jotai'
 import { recipeAtom } from '@/store/recipeAtom'
 import { RecipeTypes } from "@/types/recipeTypes"
+import { handleVoiceQuery } from "@/lib/handleVoiceQuery"
 
 const dummyRecipe: RecipeTypes = {
   title: "Dummy Recipe",
@@ -45,20 +45,6 @@ export default function RecipeStepsPage() {
 
   const step = recipe.steps[currentStepIndex]
 
-  const speakInstruction = (instruction: string) => {
-    const synth = getSpeechSynthesis()
-    if (synth.getIsSpeaking()) {
-      synth.stop(); setIsSpeaking(false)
-    } else {
-      synth.speak(instruction); setIsSpeaking(true)
-      const iv = setInterval(() => {
-        if (!synth.getIsSpeaking()) {
-          setIsSpeaking(false); clearInterval(iv)
-        }
-      }, 100)
-    }
-  }
-
   const goToNextStep = () => setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
   const goToPrevStep = () => setCurrentStepIndex(i => Math.max(i - 1, 0))
 
@@ -73,6 +59,64 @@ export default function RecipeStepsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStepIndex])
 
+  // ステップの指示文・AI返答の読み上げを一元管理し、再生時は音声認識を一時停止→再開
+  useEffect(() => {
+    const synth = getSpeechSynthesis()
+    const recognition = getSpeechRecognition()
+    if (!recognition.isSupported()) return
+    let spokenText = aiAnswer || (step && step.instruction)
+    if (!spokenText) return
+
+    // 音声認識を一時停止
+    recognition.stopListening()
+    // 読み上げ
+    synth.speak(spokenText)
+    // 読み上げ終了時に音声認識を再開
+    const interval = setInterval(() => {
+      if (!synth.getIsSpeaking()) {
+        recognition.startListening(() => {}, () => {})
+        clearInterval(interval)
+      }
+    }, 200)
+    return () => clearInterval(interval)
+  }, [step, aiAnswer])
+
+  // 音声認識の初期化・クリーンアップ専用
+  useEffect(() => {
+    const recognition = getSpeechRecognition()
+    if (!recognition.isSupported()) return
+    let isUnmounted = false
+    const handleResult = (text: string) => {
+      setVoiceQuestion(text)
+      handleVoiceQuery({
+        text,
+        step,
+        recipeInformation: recipe,
+        goToNextStep,
+        goToPrevStep,
+        setAiAnswer,
+        setShowAiAnswer,
+      })
+      setTimeout(() => {
+        if (!isUnmounted) recognition.startListening(handleResult, handleError)
+      }, 2000)
+    }
+    const handleError = () => {}
+    const handleEnd = () => {
+      if (!isUnmounted) recognition.startListening(handleResult, handleError)
+    }
+    recognition.startListening(handleResult, handleError)
+    if ((recognition as any).recognition) {
+      (recognition as any).recognition.onend = handleEnd
+    }
+    setIsListening(true)
+    return () => {
+      isUnmounted = true
+      recognition.stopListening()
+      setIsListening(false)
+    }
+  }, [step, recipe])
+
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <header className="flex items-center justify-center sticky top-0 bg-gray-50 p-4 z-10">        
@@ -80,6 +124,12 @@ export default function RecipeStepsPage() {
       </header>
       <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
         <div className="mb-4 flex items-center">
+          {/* 音声認識による質問の表示 */}
+          {voiceQuestion && (
+            <div className="mb-2 p-2 bg-yellow-100 text-gray-800 rounded text-sm w-full text-center">
+              ユーザーの質問: {voiceQuestion}
+            </div>
+          )}
           {recipe.steps.map((_, idx) => (
         <>
           {idx > 0 && (
@@ -148,6 +198,18 @@ export default function RecipeStepsPage() {
           </div>
         )}
       </div>
+      <div>
+        {aiAnswer}
+      </div>
+      
     </main>
   )
 }
+function speakInstruction(instruction: string) {
+  const synth = getSpeechSynthesis()
+  if (synth.getIsSpeaking()) {
+    synth.stop()
+  }
+  synth.speak(instruction)
+}
+
