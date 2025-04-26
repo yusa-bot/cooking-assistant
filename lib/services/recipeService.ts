@@ -40,6 +40,7 @@ export async function getAllFavoriteRecipes(): Promise<RecipeTypes[]> {
 export async function getRecipeById(reciepeId: string): Promise<RecipeTypes> { 
     
     const supabase = await createClient()
+    console.log("reciepeId", reciepeId)
     const { data, error } = await supabase
         .from('recipes')
         .select(`*, recipe_ingredients (*), recipe_steps (*)`)
