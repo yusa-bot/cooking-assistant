@@ -9,21 +9,23 @@ import { getAnswerForQuestion } from "@/utils/cooking-ai"
 import { getSpeechSynthesis } from "@/utils/speech-synthesis"
 import { useAtom } from 'jotai'
 import { recipeAtom } from '@/store/recipeAtom'
+import { RecipeTypes } from "@/types/recipeTypes"
 
-// レシピの手順の型定義
-interface RecipeStep {
-  id: number
-  instruction: string
-  imageUrl?: string
-  timer?: number // タイマー（秒）
+
+const RecipeDummy:RecipeTypes = {
+  title: "Dummy Recipe",
+  ingredients: [
+    {name:"米"    , amount: "2", unit: "合"},
+    {name:"肉"  , amount: "200", unit: "g"},
+  ],
+  steps: [
+    {instruction: "米を研ぐ", step_number: 1, timer: ""},
+    {instruction: "水を入れる", step_number: 2, timer: "05:00"},
+    {instruction: "炊飯器で炊く", step_number: 3, timer: "10:00"}
+  ],
+  is_favorite: false,
 }
 
-// レシピの型定義
-interface Recipe {
-  id: number
-  name: string
-  steps: RecipeStep[]
-}
 
 export default function RecipeStepsPage() {
   const params = useParams()
