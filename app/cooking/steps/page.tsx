@@ -233,10 +233,10 @@ export default function RecipeStepsPage() {
       {/* 調理開始オーバーレイ */}
       {showStartCookingOverlay && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl max-w-md w-full text-center">
+          <div className="bg-white mx-5 dark:bg-gray-800 p-8 rounded-xl max-w-md w-full text-center">
             <h2 className="text-2xl font-bold mb-4">{recipe.title}</h2>
-            <p className="mb-6 text-gray-600 dark:text-gray-300">調理を開始する準備ができましたか？</p>
-            <p className="mb-6 text-gray-500 dark:text-gray-400 text-sm">
+            <p className="mb-6 text-gray-600 dark:text-gray-300">準備はできましたか？</p>
+            <p className="mb-6 text-gray-500 dark:text-gray-400 text-xs">
               ※ ボタンをタップすると音声ガイドが始まります
             </p>
             <button
