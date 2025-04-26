@@ -44,6 +44,10 @@ export default function RecipeStepsPage() {
   const [isAudioInitialized, setIsAudioInitialized] = useState(false)
   // 調理開始画面が表示されているかどうか
   const [showStartCookingOverlay, setShowStartCookingOverlay] = useState(true)
+  // 完了確認ポップアップを表示するかどうか
+  const [showCompletionPopup, setShowCompletionPopup] = useState(false)
+  // 完了セクションを表示するかどうか
+  const [showCompletionSection, setShowCompletionSection] = useState(false)
   
   // TimerUI の参照を保持するための ref
   const timerRef = useRef<TimerUIRef | null>(null)
@@ -123,10 +127,44 @@ export default function RecipeStepsPage() {
 
   if (!recipe) return <p>レシピがありません</p>
 
-  const step = recipe.steps[currentStepIndex]
+  // 完了セクションが表示されているときは特別なステップを表示する
+  const step = showCompletionSection 
+    ? { instruction: "素晴らしい！調理が完了しました。お疲れ様でした！", step_number: recipe.steps.length + 1, timer: "" } 
+    : recipe.steps[currentStepIndex]
 
-  const goToNextStep = () => setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
-  const goToPrevStep = () => setCurrentStepIndex(i => Math.max(i - 1, 0))
+  // 次のステップに進む関数
+  const goToNextStep = () => {
+    // 最後のステップから次に進むと完了セクションが表示される
+    if (currentStepIndex === recipe.steps.length - 1) {
+      setShowCompletionSection(true)
+      
+      // 完了メッセージを読み上げる
+      const synth = getSpeechSynthesis()
+      synth.speak("素晴らしい！調理が完了しました。お疲れ様でした！", "ja-JP", true)
+    } else {
+      setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
+    }
+  }
+  
+  // 前のステップに戻る関数
+  const goToPrevStep = () => {
+    // 完了セクションから前に戻ると最後のレシピステップに戻る
+    if (showCompletionSection) {
+      setShowCompletionSection(false)
+    } else {
+      setCurrentStepIndex(i => Math.max(i - 1, 0))
+    }
+  }
+
+  // 調理完了確認ポップアップを表示する関数
+  const handleCompleteClick = () => {
+    setShowCompletionPopup(true)
+  }
+
+  // 調理完了を確定し次のページに遷移する関数
+  const handleConfirmCompletion = () => {
+    router.push("/cooking/submit-photo")
+  }
   
   // TimerUI を制御する関数
   const startTimer = () => {
@@ -298,161 +336,204 @@ export default function RecipeStepsPage() {
       </header>
       
       <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
-        <div className="mb-4 flex items-center">
-          
-          {recipe.steps.map((_, idx) => (
-            <React.Fragment key={idx}>
-              {idx > 0 && (
-                <div className="w-6 h-px bg-gray-300 mx-2" />
-              )}
-              <button
-                onClick={() => {
-                  setCurrentStepIndex(idx);
-                  // ステップ変更時に音声システムを初期化
-                  initializeAudioSystem();
-                }}
-                className={`
-                  w-10 h-10 flex items-center justify-center rounded-full font-semibold
-                  ${idx === currentStepIndex
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-300 text-gray-700"}
-                `}
-              >
-                {idx + 1}
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-300 dark:border-gray-800 w-full mb-24">          
-          <section
-            aria-labelledby="instruction-section"
-            className="mb-6 w-full"
-          >
-            <div
-              id="instruction-section"
-              className="
-                text-1xl font-bold
-                h-[10rem]            /* 固定高さ */
-                overflow-y-auto    /* 縦スクロール有効 */
-                overflow-x-hidden
-                whitespace-normal break-words
-                p-4                
-                border border-gray-200 dark:border-gray-600
-                rounded-lg
-                shadow-sm
-              "
-            >
-              {step.instruction}
+          {!showCompletionSection && (
+            <div className="mb-4 flex items-center">
+              {recipe.steps.map((_, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && (
+                    <div className="w-6 h-px bg-gray-300 mx-2" />
+                  )}
+                  <button
+                    onClick={() => {
+                      setCurrentStepIndex(idx);
+                      // ステップ変更時に音声システムを初期化
+                      initializeAudioSystem();
+                    }}
+                    className={`
+                      w-10 h-10 flex items-center justify-center rounded-full font-semibold
+                      ${idx === currentStepIndex
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-300 text-gray-700"}
+                    `}
+                  >
+                    {idx + 1}
+                  </button>
+                </React.Fragment>
+              ))}
             </div>
-          </section>
+          )}
 
-          {/* タイマーUI */}
-          <section aria-labelledby="timer-section" className="mb-6 w-full h-[10rem]">
-            {step.timer && (
-              <TimerUI 
-                initialTime={step.timer}
-                ref={(el) => {
-                  // TimerUIのrefを通じてstart/stopメソッドにアクセス
-                  if (el) {
-                    timerRef.current = {
-                      start: () => el.start && el.start(),
-                      stop: () => el.stop && el.stop()
-                    };
-                  }
-                }}
-              />
-            )}
-          </section>
-          
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-300 dark:border-gray-800 w-full mb-24">          
+            {/* 完了セクション時の特別UI */}
+            {showCompletionSection ? (
+              <div className="flex flex-col items-center p-4">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                  <Check className="h-12 w-12 text-green-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-center mb-4">{step.instruction}</h2>
+                <p className="text-gray-600 text-center mb-8">
+                  調理が完了しました。写真を撮影して記録に残しましょう。
+                </p>
+                <button 
+                  onClick={handleCompleteClick}
+                  className="py-4 px-10 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors flex items-center"
+                >
+                  終了する
+                </button>
+              </div>
+            ) : (
+              <>
+                <section
+                  aria-labelledby="instruction-section"
+                  className="mb-6 w-full"
+                >
+                  <div
+                    id="instruction-section"
+                    className="
+                      text-1xl font-bold
+                      h-[10rem]            /* 固定高さ */
+                      overflow-y-auto    /* 縦スクロール有効 */
+                      overflow-x-hidden
+                      whitespace-normal break-words
+                      p-4                
+                      border border-gray-200 dark:border-gray-600
+                      rounded-lg
+                      shadow-sm
+                    "
+                  >
+                    {step.instruction}
+                  </div>
+                </section>
 
-          <div className="mt-10 flex items-center justify-between gap-4">
-            <button 
-              onClick={() => {
-                goToPrevStep();
-                // 前へボタンクリック時に音声システムを初期化
-                initializeAudioSystem();
-              }} 
-              disabled={currentStepIndex===0} 
-              className="px-6 py-3 bg-gray-200 rounded-full"
-            >
-              前へ
-            </button>
-            <button
-              type="button"
-              aria-label={isPausedForSpeech ? "マイク停止中" : (isListening ? "録音中（クリックで停止）" : "マイク待機中（クリックで録音開始）")}
-              className={`
-                px-6 py-3 rounded-full flex items-center justify-center transition
-                ${isPausedForSpeech ? "bg-gray-300" : isListening ? "bg-red-600 animate-pulse" : "bg-gray-200"}
-                ${isPausedForSpeech ? "cursor-not-allowed" : "cursor-pointer"}
-              `}
-              disabled={isPausedForSpeech}
-              onClick={() => {
-                // マイクボタンクリック時に音声システムを初期化
-                initializeAudioSystem();
+                {/* タイマーUI */}
+                <section aria-labelledby="timer-section" className="mb-6 w-full h-[10rem]">
+                  {step.timer && (
+                    <TimerUI 
+                      initialTime={step.timer}
+                      ref={(el) => {
+                        // TimerUIのrefを通じてstart/stopメソッドにアクセス
+                        if (el) {
+                          timerRef.current = {
+                            start: () => el.start && el.start(),
+                            stop: () => el.stop && el.stop()
+                          };
+                        }
+                      }}
+                    />
+                  )}
+                </section>
                 
-                if (isPausedForSpeech) return;
-                const recognition = getSpeechRecognition();
-                if (isListening) {
-                  recognition.stopListening();
-                  setIsListening(false);
-                } else if (!recognition.getIsListening()) {
-                  recognition.startListening(
-                    (text: string) => {
-                      setVoiceQuestion(text);
-                      handleVoiceQuery({
-                        text,
-                        step,
-                        recipeInformation: recipe,
-                        goToNextStep,
-                        goToPrevStep,
-                        setAiAnswer,
-                        setShowAiAnswer,
-                        startTimer,
-                        stopTimer,
-                      });
-                    },
-                    (error: any) => {
-                      console.error("音声認識エラー:", error);
-                    }
-                  );
-                  setIsListening(true);
-                }
-              }}
-            >
-              {isPausedForSpeech ? (
-                <MicOff className="h-6 w-6 text-gray-400" />
-              ) : isListening ? (
-                <Mic className="h-6 w-6 text-white" />
-              ) : (
-                <Mic className="h-6 w-6 text-green-600" />
-              )}
-            </button>
-            <button 
-              onClick={() => {
-                goToNextStep();
-                // 次へボタンクリック時に音声システムを初期化
-                initializeAudioSystem();
-              }} 
-              disabled={currentStepIndex===recipe.steps.length-1} 
-              className="px-6 py-3 bg-green-600 text-white rounded-full"
-            >
-              次へ
-            </button>
-          </div>
-        </div>
 
-        {currentStepIndex === recipe.steps.length - 1 && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white shadow">
-            <button onClick={() => router.push("/cooking/submit-photo")} className="w-full py-4 bg-green-600 text-white rounded-full">
-              <Check className="inline mr-2" />調理完了
-            </button>
+                <div className="mt-10 flex items-center justify-between gap-4">
+                  <button 
+                    onClick={() => {
+                      goToPrevStep();
+                      // 前へボタンクリック時に音声システムを初期化
+                      initializeAudioSystem();
+                    }} 
+                    disabled={currentStepIndex===0} 
+                    className="px-6 py-3 bg-gray-200 rounded-full"
+                  >
+                    前へ
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={isPausedForSpeech ? "マイク停止中" : (isListening ? "録音中（クリックで停止）" : "マイク待機中（クリックで録音開始）")}
+                    className={`
+                      px-6 py-3 rounded-full flex items-center justify-center transition
+                      ${isPausedForSpeech ? "bg-gray-300" : isListening ? "bg-red-600 animate-pulse" : "bg-gray-200"}
+                      ${isPausedForSpeech ? "cursor-not-allowed" : "cursor-pointer"}
+                    `}
+                    disabled={isPausedForSpeech}
+                    onClick={() => {
+                      // マイクボタンクリック時に音声システムを初期化
+                      initializeAudioSystem();
+                      
+                      if (isPausedForSpeech) return;
+                      const recognition = getSpeechRecognition();
+                      if (isListening) {
+                        recognition.stopListening();
+                        setIsListening(false);
+                      } else if (!recognition.getIsListening()) {
+                        recognition.startListening(
+                          (text: string) => {
+                            setVoiceQuestion(text);
+                            handleVoiceQuery({
+                              text,
+                              step,
+                              recipeInformation: recipe,
+                              goToNextStep,
+                              goToPrevStep,
+                              setAiAnswer,
+                              setShowAiAnswer,
+                              startTimer,
+                              stopTimer,
+                            });
+                          },
+                          (error: any) => {
+                            console.error("音声認識エラー:", error);
+                          }
+                        );
+                        setIsListening(true);
+                      }
+                    }}
+                  >
+                    {isPausedForSpeech ? (
+                      <MicOff className="h-6 w-6 text-gray-400" />
+                    ) : isListening ? (
+                      <Mic className="h-6 w-6 text-white" />
+                    ) : (
+                      <Mic className="h-6 w-6 text-green-600" />
+                    )}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      goToNextStep();
+                      // 次へボタンクリック時に音声システムを初期化
+                      initializeAudioSystem();
+                    }} 
+                    disabled={currentStepIndex===recipe.steps.length-1} 
+                    className="px-6 py-3 bg-green-600 text-white rounded-full"
+                  >
+                    次へ
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {currentStepIndex === recipe.steps.length - 1 && !showCompletionSection && (
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white shadow">
+              <button onClick={goToNextStep} className="w-full py-4 bg-green-600 text-white rounded-full">
+                <Check className="inline mr-2" />調理完了
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* 調理完了確認ポップアップ */}
+        {showCompletionPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white mx-5 dark:bg-gray-800 p-8 rounded-xl max-w-md w-full text-center">
+              <h2 className="text-2xl font-bold mb-4">調理完了</h2>
+              <p className="mb-6 text-gray-600 dark:text-gray-300">本当に完了しましたか？</p>
+              <div className="flex justify-around">
+                <button
+                  onClick={handleConfirmCompletion}
+                  className="py-2 px-4 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
+                >
+                  はい
+                </button>
+                <button
+                  onClick={() => setShowCompletionPopup(false)}
+                  className="py-2 px-4 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 transition-colors"
+                >
+                  いいえ
+                </button>
+              </div>
+            </div>
           </div>
         )}
-      </div>
-      
-      
-      
     </main>
   )
 }
