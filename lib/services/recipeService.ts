@@ -49,6 +49,7 @@ export async function getRecipeById(reciepeId: string): Promise<RecipeTypes> {
     if (error) throw new Error(error.message)
     const recipeFromDatabase: RecipeTypes = {
         id: data.id,
+        user_id: data.user_id,
         title: data.title,
         description: data.description ?? undefined,
         photo_url: data.photo_url ?? undefined,
@@ -63,12 +64,17 @@ export async function getRecipeById(reciepeId: string): Promise<RecipeTypes> {
 
 export async function createRecipe(input: RecipeTypes) {
   const supabase = await createClient()
-  
+  const { data: { user }} = await supabase.auth.getUser()
+  if (!user) {
+    
+    throw new Error('User not authenticated')
+  }
   // レシピ本体を作成
   const { data: recipe, error: recipeError } = await supabase
     .from('recipes')
     .insert({
       title: input.title,
+      user_id: user.id,
       description: input.description || null,      
       photo_url: input.photo_url || null,
       is_favorite: input.is_favorite || false,
@@ -86,6 +92,7 @@ export async function createRecipe(input: RecipeTypes) {
   if (input.ingredients.length) {
     const ingredients = input.ingredients.map(item => ({
       recipe_id: recipeId,
+      user_id: user.id,
       name: item.name,
       amount: item.amount,
       unit: item.unit,
@@ -100,6 +107,7 @@ export async function createRecipe(input: RecipeTypes) {
   if (input.steps.length) {
     const steps = input.steps.map(step => ({
       recipe_id: recipeId,
+      user_id: user.id,
       instruction: step.instruction,
       step_number: step.step_number,
       timer: step.timer || null,
