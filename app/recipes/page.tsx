@@ -18,7 +18,6 @@ interface User {
 
 export default function RecipesPage() {
   const router = useRouter()
-  const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [user,setUser] = useState<User>()
   const [recipes, setRecipes] = useAtom(recipeListAtom)
@@ -49,7 +48,7 @@ export default function RecipesPage() {
 
   //idの割り当てのためにtypesのidの?消しちゃった
   const startCooking = (recipeId: string) => {
-    router.push(`/recipes/${recipeId}/steps`)
+    router.push(`/recipes/steps`)
   }
 
   return (

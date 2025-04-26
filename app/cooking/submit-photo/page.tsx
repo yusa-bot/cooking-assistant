@@ -5,7 +5,7 @@ import { ArrowLeft, Camera, X, Save } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useAtom } from 'jotai'
-import { recipeAtom } from '@/store/recipeAtom'
+import { recipeListAtom, currentRecipeAtom } from '@/lib/atoms'
 
 interface User {
   id: string
@@ -26,9 +26,7 @@ export default function SubmitPhotoPage() {
   const [recipeName, setRecipeName] = useState<string>("")
   const [token, setToken] = useState<string | null>(null)
   const [user,setUser] = useState<User>()
-  const [recipe, setRecipe] = useAtom(recipeAtom)
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
-
+  const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
 
   // ログイン
   useEffect(() => {
@@ -47,82 +45,50 @@ export default function SubmitPhotoPage() {
     fetchUser()
   },[router])
 
-  // useEffect(() => {
-  //   const fetchRecipe = async () => {
-  //     try {
-  //       const res = await fetch(`/api/recipes/${recipeId}`, {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //       })
-  //       if (!res.ok) throw new Error("レシピ情報の取得に失敗")
-  //       const data = await res.json()
-  //       setRecipeName(data.name || "レシピ名不明")
-  //     } catch (err) {
-  //       console.error("レシピ取得エラー:", err)
-  //       setRecipeName("レシピ名取得失敗")
-  //     }
-  //   }
-  
-  //   fetchRecipe()
-  // }, [recipeId, router])
+  useEffect(() => {
+    if (!photoUrl) {
+      startCamera()
+    }
+    return () => stopCamera()
+  }, [])
 
-
-  //カメラを起動する関数
+  // カメラ起動／停止
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { facingMode: 'environment' },
       })
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        videoRef.current.play()
         setIsCameraActive(true)
       }
     } catch (err) {
-      console.error("カメラへのアクセスに失敗しました:", err)
-      alert("カメラへのアクセスに失敗しました。デバイスの設定を確認してください。")
+      console.error(err)
+      alert('カメラへのアクセスに失敗しました')
     }
   }
-
-  // カメラを停止する関数
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks()
-      tracks.forEach((track) => track.stop())
-      videoRef.current.srcObject = null
+    const stream = videoRef.current?.srcObject as MediaStream
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop())
+      if (videoRef.current) videoRef.current.srcObject = null
       setIsCameraActive(false)
     }
   }
 
-  // 写真を撮影する関数
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
+    // 撮影
+    const capturePhoto = () => {
+      if (!videoRef.current || !canvasRef.current) return
       const video = videoRef.current
       const canvas = canvasRef.current
-      const context = canvas.getContext("2d")
-      // キャンバスのサイズをビデオのサイズに合わせる
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-      // ビデオフレームをキャンバスに描画
-      context?.drawImage(video, 0, 0, canvas.width, canvas.height)
-      // キャンバスの内容を画像URLとして取得
-      const imageDataUrl = canvas.toDataURL("image/jpeg")
-      setPhotoUrl(imageDataUrl)
-
-
-      // Base64をBlobに変換してFileオブジェクトを作成
-      const response = await fetch(imageDataUrl)
-      const blob = await response.blob()
-      const file = new File([blob], "photo.jpg", { type: "image/jpeg" })
-
-
-      // fileを保存
-      setPhotoFile(file)
-
-      // カメラを停止
+      const ctx = canvas.getContext('2d')
+      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/png')
+      setPhotoUrl(dataUrl)
       stopCamera()
-    }
   }
 
   // 写真を削除
@@ -143,64 +109,59 @@ export default function SubmitPhotoPage() {
     setShowConfirmation(false)
   }
 
-  // 写真を提出して履歴に保存
-  const submitAndSaveToHistory = async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const res = await fetch('/api/images/upload', {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) throw new Error(`Image upload failed: ${res.status}`);
-    return await res.json();
-
-    setRecipe(prev => prev ? {
-      ...prev,
-      photo_url: result.imageUrl, // ←ここにサーバーから返ってきた本物のURLをセット！
-    } : prev)
+  // dataURL → Blob
+  function dataURLtoBlob(dataUrl: string): Blob {
+    const [header, base64] = dataUrl.split(',')
+    const mime = header.match(/:(.*?);/)?.[1] || ''
+    const binary = atob(base64)
+    const array = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+        array[i] = binary.charCodeAt(i)
+    }
+    return new Blob([array], { type: mime })
   }
-  
-  
-  //   const { token } = JSON.parse(user)
-  //   //写真をアップロードするだけにする
-  //   //他の情報はレシピテーブルに保存する
-  //   try {
-  //     const res = await fetch(`/api/history`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         recipeId,
-  //         photoUrl,
-  //         note,
-  //         date: new Date().toISOString(),
-  //       }),
-  //     })
-  
-  //     if (!res.ok) throw new Error("送信失敗")
-  
-  //     router.push(`/recipes/${recipeId}/submission-complete`)
-  //   } catch (err) {
-  //     console.error("送信エラー:", err)
-  //     alert("送信に失敗しました")
-  //   }
-  // }
-  
 
-  // コンポーネントがマウントされたときにカメラを自動起動
-  useEffect(() => {
-    // ページ読み込み時にカメラを自動起動
-    if (!photoUrl) {
-      startCamera()
+  // アップロード
+  async function handleUpload() {
+    if (!photoUrl) return
+    const blob = dataURLtoBlob(photoUrl)
+    const formData = new FormData()
+    formData.append('file', blob, 'capture.png')
+
+    try {  //imageをDBへ
+      const res = await fetch('/api/images/upload', {
+          method: 'POST',
+          body: formData,
+      })
+      const data = await res.json()
+      
+      if (currentRecipe) {
+        setCurrentRecipe({
+          ...currentRecipe,
+          photo_url: data,
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      alert('写真の保存に失敗しました')
     }
 
-    // コンポーネントがアンマウントされるときにカメラを停止
-    return () => {
-      stopCamera()
+    try { //DBへレシピを保存
+      const res = await fetch('/api/recipes', {
+        method: 'POST',
+        body: JSON.stringify({currentRecipe}),
+      })
+      if (!res.ok) throw new Error('レシピ保存に失敗しました')
+      const data = await res.json()
+
+    } catch (err) {
+      console.error(err)
+      alert('レシピの保存に失敗しました')
     }
-  }, [])
+
+  router.push(`/cooking/submission-complete`)
+  }  
+  
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
@@ -227,17 +188,10 @@ export default function SubmitPhotoPage() {
                 // 撮影した写真のプレビュー
                 <>
                   <img src={photoUrl || "/placeholder.svg"} alt="完成した料理" className="w-full h-full object-cover" />
-                  <button
-                    onClick={removePhoto}
-                    className="absolute top-2 right-2 bg-gray-800 bg-opacity-70 text-white p-2 rounded-full"
-                    aria-label="写真を削除"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
                 </>
               ) : (
                 // カメラのプレビュー
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
               )}
 
               {/* 非表示のキャンバス要素 */}
@@ -311,7 +265,7 @@ export default function SubmitPhotoPage() {
                 キャンセル
               </button>
               <button
-                onClick={submitAndSaveToHistory}
+                onClick={handleUpload}
                 className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center justify-center"
               >
                 保存する

@@ -15,12 +15,9 @@ interface User {
   userName?: string
 }
 
-
-
 interface ApiResponse {
   recipes: RecipeTypes[]
 }
-
 
 export default function Home() {
   const router = useRouter()
@@ -73,7 +70,7 @@ export default function Home() {
           })
           if (!res.ok) throw new Error(`Error fetching recipes: ${res.status}`);
 
-          const data: ApiResponse = await res.json()
+          const data = await res.json()
           setCookingHistory(data.recipes)
         } catch (err) {
           console.error("履歴の取得エラー:", err)
@@ -86,14 +83,14 @@ export default function Home() {
     // ログイン済みの場合、レシピ帳データを取得
     const fetchFavorite = async () => {
       try {
-        const res = await fetch("/api/recipes", {
+        const res = await fetch("/api/recipes/favorite", {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${userData.id}`,
           },
         })
         if (!res.ok) throw new Error("レシピ帳取得に失敗")
-        const data: ApiResponse = await res.json()
+        const data = await res.json()
         setFavoriteRecipes(data.recipes)
       } catch (err) {
         console.error("レシピ帳の取得エラー:", err)
