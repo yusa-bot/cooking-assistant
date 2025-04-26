@@ -71,10 +71,13 @@ export default function IngredientsPage({ capturedImage }: Props) {
         const updatedIngredients = [...ingredientList];
         updatedIngredients[editingIndex] = addIngredient;
         setIngredientList(updatedIngredients);
+        setcurrentIngredient(updatedIngredients);
         setEditingIndex(null);
       } else if (!ingredientList.some(i => i.name === addIngredient.name)) {
         // 新しい材料を追加する場合
-        setIngredientList([...ingredientList, addIngredient]);
+        const updatedIngredients = [...ingredientList, addIngredient];
+        setIngredientList(updatedIngredients);
+        setcurrentIngredient(updatedIngredients);
       }
       setNewIngredient({ name: '', amount: '', unit: '' });
       setShowSuggestions(false);
@@ -86,6 +89,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
     const updatedIngredients = [...ingredientList];
     updatedIngredients.splice(index, 1);
     setIngredientList(updatedIngredients);
+    setcurrentIngredient(updatedIngredients);
     if (editingIndex === index) {
       setEditingIndex(null);
       setNewIngredient({ name: '', amount: '', unit: '' });
@@ -106,6 +110,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
       [field]: value
     };
     setIngredientList(updatedIngredients);
+    setcurrentIngredient(updatedIngredients);
   }
 
   // 入力値が変更されたときの処理
@@ -141,7 +146,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
     const res = await fetch('/api/ai/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentIngredient }),
+      body: JSON.stringify({ currentIngredient: ingredientList }),
     });
     if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
 
@@ -162,71 +167,71 @@ export default function IngredientsPage({ capturedImage }: Props) {
   }
 
   return (
-    <main className="flex min-h-screen flex-col p-4 md:p-8">
-      <header className="w-full max-w-md mx-auto py-4 flex items-center justify-between">
+    <main className="flex min-h-screen flex-col p-4 md:p-6 bg-gray-50 dark:bg-gray-900">
+      <header className="w-full max-w-xl mx-auto py-4 flex items-center justify-between mb-4">
         <Link
           href="/scan"
-          className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+          className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition-colors"
         >
-          <ArrowLeft className="h-5 w-5 mr-1" />
-          <span>戻る</span>
+          <ArrowLeft className="h-5 w-5 mr-1.5" />
+          <span className="font-medium">戻る</span>
         </Link>
-        <h1 className="text-xl font-semibold">材料の確認</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-100">材料の確認</h1>
         <div className="w-16"></div> {/* スペーサー */}
       </header>
 
-      <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
-        <div className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6 shadow-sm">
-          <h2 className="text-lg font-medium mb-3">材料リスト</h2>
+      <div className="flex flex-col items-center justify-start flex-1 w-full max-w-xl mx-auto">
+        <div className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 md:p-6 mb-6 shadow-md">
+          <h2 className="text-xl font-bold mb-5 text-green-700 dark:text-green-400 tracking-wide flex items-center">
+            材料リスト
+          </h2>
 
           {ingredientList.length > 0 ? (
-            <div className="overflow-x-auto w-full mb-4">
-              <table className="min-w-full table-auto">
+            <div className="overflow-x-auto w-full mb-6">
+              <table className="min-w-full table-auto border-separate border-spacing-y-3">
                 <thead>
-                  <tr className="border-b dark:border-gray-700">
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">名前</th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">量</th>
-                    <th className="px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">単位</th>
-                    <th className="w-12 px-3 py-2"></th>
+                  <tr className="bg-gray-50 dark:bg-gray-700">
+                    <th className="px-3 py-3 text-left text-sm md:text-base font-medium text-gray-700 dark:text-gray-200 rounded-l-lg">名前</th>
+                    <th className="px-3 py-3 text-left text-sm md:text-base font-medium text-gray-700 dark:text-gray-200">量</th>
+                    <th className="px-3 py-3 text-left text-sm md:text-base font-medium text-gray-700 dark:text-gray-200">単位</th>
+                    <th className="w-12 px-2 py-3 rounded-r-lg"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {ingredientList.map((item, index) => (
-                    <tr key={index} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750">
-                      <td className="px-3 py-3 text-sm">
+                    <tr key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors">
+                      <td className="px-3 py-2.5 text-sm md:text-base rounded-l-lg">
                         <input
                           type="text"
                           value={item.name}
                           onChange={(e) => updateIngredient(index, 'name', e.target.value)}
-                          className="w-full bg-transparent p-1 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                          className="w-full bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100"
                         />
                       </td>
-                      <td className="px-3 py-3 text-sm">
+                      <td className="px-3 py-2.5 text-sm md:text-base">
                         <input
                           type="text"
                           value={item.amount || ''}
                           onChange={(e) => updateIngredient(index, 'amount', e.target.value)}
-                          className="w-full bg-transparent p-1 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                          className="w-full bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100"
                         />
                       </td>
-                      <td className="px-3 py-3 text-sm">
+                      <td className="px-3 py-2.5 text-sm md:text-base">
                         <input
                           type="text"
                           value={item.unit || ''}
                           onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
-                          className="w-full bg-transparent p-1 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                          className="w-full bg-white dark:bg-gray-800 p-2 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-gray-100"
                         />
                       </td>
-                      <td className="px-3 py-3 text-sm">
-                        <div className="flex items-center justify-center h-full">
-                          <button
-                            onClick={() => removeIngredient(index)}
-                            className="rounded-full p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                            aria-label={`${item.name}を削除`}
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
+                      <td className="px-3 py-2.5 text-sm md:text-base rounded-r-lg">
+                        <button
+                          onClick={() => removeIngredient(index)}
+                          className="rounded-full p-1.5 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors flex items-center justify-center"
+                          aria-label={`${item.name}を削除`}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -234,22 +239,24 @@ export default function IngredientsPage({ capturedImage }: Props) {
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 mb-4 text-center py-4 bg-gray-50 dark:bg-gray-700/50 rounded-md">
-              材料が登録されていません。下のフォームから追加してください。
-            </p>
+            <div className="text-gray-500 dark:text-gray-400 mb-6 text-center py-8 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm md:text-base flex flex-col items-center space-y-2">
+              <span>材料が登録されていません</span>
+              <span className="text-sm text-gray-400 dark:text-gray-500">下のフォームから追加してください</span>
+            </div>
           )}
 
-          <div className="mt-6 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-md">
-            <h3 className="text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">新しい材料を追加</h3>
-            <div className="flex flex-col space-y-2">
-              <div className="grid grid-cols-12 gap-2">
+          <div className="mt-6 bg-gray-50 dark:bg-gray-700/40 p-5 rounded-xl shadow-sm">
+            <h3 className="text-base font-medium mb-3 text-gray-700 dark:text-gray-200">新しい材料を追加</h3>
+            <div className="flex flex-col space-y-3">
+              <div className="grid grid-cols-12 gap-2 md:gap-3">
                 <div className="col-span-5">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={newIngredient.name}
                     onChange={(e) => handleInputChange(e, 'name')}
                     placeholder="材料名"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 text-sm md:text-base transition-shadow"
                   />
                 </div>
                 <div className="col-span-3">
@@ -258,7 +265,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
                     value={newIngredient.amount || ''}
                     onChange={(e) => handleInputChange(e, 'amount')}
                     placeholder="量"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 text-sm md:text-base transition-shadow"
                   />
                 </div>
                 <div className="col-span-3">
@@ -267,7 +274,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
                     value={newIngredient.unit || ''}
                     onChange={(e) => handleInputChange(e, 'unit')}
                     placeholder="単位"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 text-sm md:text-base transition-shadow"
                   />
                 </div>
                 <div className="col-span-1">
@@ -277,8 +284,9 @@ export default function IngredientsPage({ capturedImage }: Props) {
                         addIngredient(newIngredient);
                       }
                     }}
-                    className="w-full h-full px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md flex items-center justify-center transition-colors"
+                    className="w-full h-full px-2 py-1 bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg flex items-center justify-center transition-colors"
                     disabled={!newIngredient.name}
+                    aria-label="材料を追加"
                   >
                     <Plus className="h-5 w-5" />
                   </button>
@@ -292,7 +300,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
           <button
             onClick={goToRecipes}
             disabled={ingredientList.length === 0}
-            className="h-14 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-full w-full shadow-md transition-all duration-200"
+            className="h-14 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-700 hover:bg-green-800 disabled:bg-gray-300 text-white rounded-full w-full  transition-all duration-200"
           >
             レシピ提案へ進む
             <ChevronRight className="ml-2 h-5 w-5" />

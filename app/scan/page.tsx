@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import { useAtom } from 'jotai'
 import { ingredientListAtom } from '@/lib/atoms' // <IngredientTypes[]>
+import Loading from "@/components/Loading";
 
 export default function ScanPage() {  
   const [isCameraActive, setIsCameraActive] = useState(false)
@@ -20,6 +21,7 @@ export default function ScanPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [currentIngredient,setCurrentIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // ログインチェック
   useEffect(() => {
@@ -117,6 +119,7 @@ export default function ScanPage() {
 
   //材料を推定 jotaiへ
   const fetchIngredients = async () => {
+    setIsLoading(true)
     try {
       console.log("キャプチャした画像:", photoUrl)
       const res = await fetch("/api/ai/detect", {
@@ -132,11 +135,12 @@ export default function ScanPage() {
       console.log("取得した食材:", data)
       setCurrentIngredient(data) // <IngredientTypes[]>
       console.log("jotaiに保存した食材:",currentIngredient)
+      router.push("/ingredients")
     } catch (err) {
       console.error("食材の取得エラー:", err)
       setCurrentIngredient([])
+      setIsLoading(false)
     }
-    router.push("/ingredients")
   }
 
   // モーダルを閉じる
@@ -147,6 +151,15 @@ export default function ScanPage() {
 
   if (!isLoggedIn && !showLoginModal) {
     return null // ログインモーダルが表示される前は何も表示しない
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <Loading />
+        <p className="mt-4 text-lg font-bold text-green-700 dark:text-green-700">材料を推定中...</p>
+      </div>
+    )
   }
 
   return (
@@ -226,4 +239,3 @@ export default function ScanPage() {
     </main>
   )
 }
-
