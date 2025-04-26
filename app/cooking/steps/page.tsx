@@ -332,8 +332,8 @@ export default function RecipeStepsPage() {
             <div
               id="instruction-section"
               className="
-                text-2xl font-bold
-                h-[15rem]            /* 固定高さ */
+                text-1xl font-bold
+                h-[10rem]            /* 固定高さ */
                 overflow-y-auto    /* 縦スクロール有効 */
                 overflow-x-hidden
                 whitespace-normal break-words
@@ -366,7 +366,7 @@ export default function RecipeStepsPage() {
           </section>
           
 
-          <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="mt-10 flex items-center justify-between gap-4">
             <button 
               onClick={() => {
                 goToPrevStep();
