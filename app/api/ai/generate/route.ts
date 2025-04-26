@@ -1,8 +1,8 @@
 import { generateRecipesFromIngredients } from "@/lib/services/openai/textToService";
-import { GeneratedRecipeTypes} from "@/types/recipeTypes";
+import { GeneratedRecipeTypes, IngredientTypes} from "@/types/recipeTypes";
 export async function POST(request: Request) {
     const body = await request.json();
-    const ingredients = body.ingredients;
+    const ingredients:IngredientTypes[] = body.ingredients;
     try {
         const generatedRecipes:GeneratedRecipeTypes[] = await generateRecipesFromIngredients(ingredients);
         return new Response(JSON.stringify(generatedRecipes), {
