@@ -278,7 +278,7 @@ export default function RecipeStepsPage() {
   // 調理完了
   const finishCooking = () => {
     // 写真提出画面に遷移
-    router.push(`/recipes/${recipeId}/submit-photo`)
+    router.push(`/cooking/submit-photo`)
   }
 
   // コンポーネントのクリーンアップ
