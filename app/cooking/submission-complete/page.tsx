@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { Home, BookOpen, Check, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
+import { useAtom } from "jotai"
+import { currentRecipeAtom } from "@/lib/atoms"
 
 interface User {
   id: string
@@ -15,7 +17,10 @@ export default function SubmissionCompletePage() {
   const params = useParams()
   const recipeId = Number(params.id)
   const router = useRouter()
-  const [user,setUser] = useState<User>()
+  const [,setUser] = useState<User>()
+  const [currentRecipe,setCurrentRecipe] = useAtom(currentRecipeAtom)
+  const [addedToRecipeBook, setAddedToRecipeBook] = useState(false)
+  const [showAddConfirm, setShowAddConfirm] = useState(false)
 
   // ログイン
   useEffect(() => {
@@ -33,9 +38,7 @@ export default function SubmissionCompletePage() {
     fetchUser()
   },[router])
 
-  const [addedToRecipeBook, setAddedToRecipeBook] = useState(false)
-  const [showAddConfirm, setShowAddConfirm] = useState(false)
-
+  
   // レシピ情報（実際のアプリではAPIから取得）
   const recipe = {
     id: recipeId,
@@ -48,6 +51,13 @@ export default function SubmissionCompletePage() {
   const toggleRecipeBook = () => {
     // 実際のアプリではAPIを呼び出してレシピ帳の状態を更新
     setAddedToRecipeBook(!addedToRecipeBook)
+    if (currentRecipe && currentRecipe.id) {
+      setCurrentRecipe({
+        ...currentRecipe,
+        is_favorite: !addedToRecipeBook,
+        
+      })
+    }
 
     // レシピ帳に追加した場合、確認メッセージを表示
     if (!addedToRecipeBook) {
