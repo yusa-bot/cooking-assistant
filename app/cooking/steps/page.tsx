@@ -282,13 +282,7 @@ export default function RecipeStepsPage() {
           </div>
         )}
       </div>
-      <div>
-        {aiAnswer && showAiAnswer && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg mt-4">
-            <p className="text-gray-800">{aiAnswer}</p>
-          </div>
-        )}
-      </div>
+      
       
       
     </main>
