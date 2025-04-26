@@ -1,49 +1,82 @@
 import { createClient } from '@/utils/supabase/server'
+import { RecipeTypes } from '@/types/recipeTypes'
 
-export interface RecipeInput {
-  title: string
-  description?: string
-  creator_id?: string
-  ingredients: Array<{ name: string; amount: number; unit: string }>
-  steps: Array<{ instruction: string; step_number: number; timer?: string }>
-  photo_url?: string
-  is_favorite?: boolean
+
+export async function getAllRecipes(): Promise<RecipeTypes[]> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('recipes')
+        .select(`*, recipe_ingredients (*), recipe_steps (*)`)
+        .order('created_at', { ascending: false })
+
+    if (error) throw new Error(error.message)
+    const recipesFromDatabase:RecipeTypes[] = data.map(recipe => ({
+
+        ...recipe,
+        ingredients: recipe.recipe_ingredients,
+        steps: recipe.recipe_steps,
+    }))
+
+    return recipesFromDatabase
 }
 
-export async function getAllRecipes() {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(`*, recipe_ingredients (*), recipe_steps (*)`)
-    .order('created_at', { ascending: false })
+export async function getAllFavoriteRecipes(): Promise<RecipeTypes[]> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('recipes')
+        .select(`*, recipe_ingredients (*), recipe_steps (*)`)
+        .eq('is_favorite', true)
+        .order('created_at', { ascending: false })
 
-  if (error) throw new Error(error.message)
-  return data
+    if (error) throw new Error(error.message)
+    const recipesFromDatabase:RecipeTypes[] = data.map(recipe => ({
+        ...recipe,
+        ingredients: recipe.recipe_ingredients,
+        steps: recipe.recipe_steps,
+    }))
+
+    return recipesFromDatabase
 }
-
-export async function getRecipeById(reciepeId: string) { 
+export async function getRecipeById(reciepeId: string): Promise<RecipeTypes> { 
     
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('recipes')
-    .select(`*, recipe_ingredients (*), recipe_steps (*)`)
-    .eq('id', reciepeId)
-    .single()
+    const supabase = await createClient()
+    console.log("reciepeId", reciepeId)
+    const { data, error } = await supabase
+        .from('recipes')
+        .select(`*, recipe_ingredients (*), recipe_steps (*)`)
+        .eq('id', reciepeId)
+        .single()
 
-  if (error) throw new Error(error.message)
-  return data
+    if (error) throw new Error(error.message)
+    const recipeFromDatabase: RecipeTypes = {
+        id: data.id,
+        user_id: data.user_id,
+        title: data.title,
+        description: data.description ?? undefined,
+        photo_url: data.photo_url ?? undefined,
+        is_favorite: data.is_favorite,
+        ingredients: data.recipe_ingredients,
+        steps: data.recipe_steps,
+      }
+    
+
+    return recipeFromDatabase
 }
 
-export async function createRecipe(input: RecipeInput) {
+export async function createRecipe(input: RecipeTypes) {
   const supabase = await createClient()
-  
+  const { data: { user }} = await supabase.auth.getUser()
+  if (!user) {
+    
+    throw new Error('User not authenticated')
+  }
   // レシピ本体を作成
   const { data: recipe, error: recipeError } = await supabase
     .from('recipes')
     .insert({
       title: input.title,
-      description: input.description || null,
-      creator_id: input.creator_id || null,
+      user_id: user.id,
+      description: input.description || null,      
       photo_url: input.photo_url || null,
       is_favorite: input.is_favorite || false,
     })
@@ -60,6 +93,7 @@ export async function createRecipe(input: RecipeInput) {
   if (input.ingredients.length) {
     const ingredients = input.ingredients.map(item => ({
       recipe_id: recipeId,
+      user_id: user.id,
       name: item.name,
       amount: item.amount,
       unit: item.unit,
@@ -74,6 +108,7 @@ export async function createRecipe(input: RecipeInput) {
   if (input.steps.length) {
     const steps = input.steps.map(step => ({
       recipe_id: recipeId,
+      user_id: user.id,
       instruction: step.instruction,
       step_number: step.step_number,
       timer: step.timer || null,

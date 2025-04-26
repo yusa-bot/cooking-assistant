@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import RecipePopup from "@/components/recipe-popup"
+import { RecipeTypes,IngredientTypes,StepTypes } from "@/types/recipeTypes"
 
 interface User {
   id: string
@@ -15,31 +16,9 @@ interface User {
 }
 
 
-interface Ingredient {
-  name: string
-  amount: number
-  unit: string
-}
-
-interface Step {
-  instruction: string
-  step_number: number
-  timer?: string
-}
-
-interface Recipe {
-  id: string
-  title: string
-  imageUrl?: string
-  description: string
-  ingredients?: Ingredient[]
-  steps?: Step[]
-  date: string
-  difficulty?: string
-}
 
 interface ApiResponse {
-  recipes: Recipe[]
+  recipes: RecipeTypes[]
 }
 
 
@@ -47,11 +26,11 @@ export default function Home() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState("")
-  const [cookingHistory, setCookingHistory] = useState<Recipe[]>([]) //配列
-  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([])
+  const [cookingHistory, setCookingHistory] = useState<RecipeTypes[]>([]) //配列
+  const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeTypes[]>([])
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginFeature, setLoginFeature] = useState("この機能")
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [user,setUser] = useState<User>()
 
   // ログイン状態と履歴を確認
@@ -151,36 +130,29 @@ export default function Home() {
   }
 
   // お気にレシピをクリックしたときの処理
-  const handleRecipeClick = (recipe: Recipe) => {
+  const handleRecipeClick = (recipe: RecipeTypes) => {
     // レシピの詳細情報を設定
     setSelectedRecipe({
-      id: recipe.id,
-      title: recipe.title,
-      description: recipe.description || "",
-      date: recipe.date || "",
-      difficulty: recipe.difficulty || "",
-      imageUrl: recipe.imageUrl,
-      steps: recipe.steps || []
+      ...recipe,
+      steps: recipe.steps || [],
+      ingredients: recipe.ingredients || []
     })
   }
 
   // 履歴をクリックしたときの処理
-  const handleHistoryClick = (recipe: Recipe) => {
+  const handleHistoryClick = (recipe: RecipeTypes) => {
     // 履歴からレシピの詳細情報を設定
     setSelectedRecipe({
-      id: recipe.id,
-      title: recipe.title,
-      description: recipe.description || "",
-      date: recipe.date || "",
-      difficulty: recipe.difficulty || "",
-      imageUrl: recipe.imageUrl,
-      steps: recipe.steps || []
+      ...recipe,
+      steps: recipe.steps || [],
+      ingredients: recipe.ingredients || []      
     })
   }
 
   // 調理を開始する
   const startCooking = (recipeId: string, source: string) => {
     // 遷移元を記録
+    //TODO:履歴から調理する場合は、調理スタート時にjotaiに保存する
     localStorage.setItem("recipeSource", source)
     router.push(`/recipes/${recipeId}/steps`)
   }
@@ -264,7 +236,7 @@ export default function Home() {
                     >
                       <div className="aspect-square w-full overflow-hidden">
                         <img
-                          src={recipe.imageUrl || "/placeholder.svg"}
+                          src={recipe.photo_url || "/placeholder.svg"}
                           alt={recipe.title}
                           className="w-full h-full object-cover"
                         />
@@ -315,14 +287,14 @@ export default function Home() {
                     >
                       <div className="aspect-square w-full overflow-hidden">
                         <img
-                          src={item.imageUrl || "/placeholder.svg"}
+                          src={item.photo_url || "/placeholder.svg"}
                           alt={item.title}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="p-3">
                         <h3 className="font-medium text-sm truncate">{item.title}</h3>
-                        <p className="text-gray-500 text-xs mt-1">{item.date}</p>
+                        <p className="text-gray-500 text-xs mt-1">{item.created_at}</p>
                       </div>
                     </div>
                   ))}
@@ -350,7 +322,7 @@ export default function Home() {
         <RecipePopup
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
-          onStartCooking={() => startCooking(selectedRecipe.id, "home")}
+          onStartCooking={() => startCooking(selectedRecipe.id!, "home")}
         />
       )}
 

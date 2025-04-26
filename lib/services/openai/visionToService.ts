@@ -1,20 +1,19 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { zodResponseFormat } from 'openai/helpers/zod';
-
+import { IngredientTypes } from '@/types/recipeTypes'; 
 
 const IngredientSchema = z.object({
-  ingredient: z.string().describe("検出された材料の名前 (例: 'トマト', '小麦粉', '鶏むね肉')"),
+  name: z.string().describe("検出された材料の名前 (例: 'トマト', '小麦粉', '鶏むね肉')"),
   amount: z.string().describe("推定される量や数量 (例: '1', '2', 'ひとつかみ', 不明な場合は'N/A')"),
   unit: z.string().describe("量の単位 (例: '個', 'g', 'ml', 'カップ', 不明または単位がない場合は'N/A')"),
 });
 
 const IngredientsResponseSchema = z.object({
   ingredients: z.array(IngredientSchema).describe("画像から検出された材料のリスト"),
-}).strict(); 
+}).strict();
 
-export type IngredientInfo = z.infer<typeof IngredientSchema>;
-type DetectIngredientsSuccess = { ingredients: IngredientInfo[] };
+type DetectIngredientsSuccess = IngredientTypes[] ;
 type DetectIngredientsError = { error: string; refusal?: string };
 export type DetectIngredientsResult = DetectIngredientsSuccess | DetectIngredientsError;
 
@@ -55,7 +54,7 @@ export async function detectIngredients(base64Image: string): Promise<DetectIngr
             {
               type: "text",
               
-              text: `提供された画像から食品・食材を特定し、それぞれの「材料名(ingredient)」、「量(amount)」、「単位(unit)」を抽出してください。量や単位が不明確な場合や該当しない場合は 'N/A' としてください。必ず指定されたJSONスキーマの形式で出力してください。`,
+              text: `提供された画像から食品・食材を特定し、それぞれの「材料名(name)」、「量(amount)」、「単位(unit)」を抽出してください。量や単位が不明確な場合や該当しない場合は 'N/A' としてください。必ず指定されたJSONスキーマの形式で出力してください。`,
             },
             {
               type: "image_url",
@@ -101,7 +100,8 @@ export async function detectIngredients(base64Image: string): Promise<DetectIngr
 
       console.log("Successfully detected ingredients:", validationResult.data.ingredients);
       
-      return { ingredients: validationResult.data.ingredients };
+      // Return with correct Ingredient type
+      return validationResult.data.ingredients ;
 
     } catch (parseError) {
       console.error("Failed to parse OpenAI JSON response:", parseError);

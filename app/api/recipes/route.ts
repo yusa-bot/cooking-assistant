@@ -1,25 +1,9 @@
-type Recipe = {
-    id: number;
-    title: string;
-    description: string;
-    date: string;
-    ingredients: Array<{
-        name: string;
-        amount: number;
-        unit: string;
-    }>;
-    steps: Array<{
-        instruction: string;
-        step_number: number;
-        timer?: string;
-    }>;
-};
-
 import { getAllRecipes, createRecipe } from '@/lib/services/recipeService'
+import { RecipeTypes } from '@/types/recipeTypes'
 
 export async function GET() {
   try {
-    const recipes = await getAllRecipes()
+    const recipes:RecipeTypes[] = await getAllRecipes()
     return new Response(JSON.stringify(recipes), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -34,7 +18,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const input = await req.json()
+    const input:RecipeTypes = await req.json()
     const result = await createRecipe(input)
     return new Response(JSON.stringify(result), {
       status: 201,
