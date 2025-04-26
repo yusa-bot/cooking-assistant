@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
 import { useAtom } from 'jotai'
-import { recipeListAtom, currentRecipeAtom } from '@/lib/atoms'
+import { generatedRecipesAtom, currentRecipeAtom } from '@/lib/atoms'
 import { RecipeTypes, GeneratedRecipeTypes, IngredientTypes } from '@/types/recipeTypes'
 
 interface User {
@@ -18,11 +18,11 @@ interface User {
 
 export default function RecipesPage() {
   const router = useRouter()
-  const [token, setToken] = useState<string | null>(null)
-  const [user,setUser] = useState<User>()
-  const [recipes, setRecipes] = useAtom(recipeListAtom)
+  const [, setToken] = useState<string | null>(null)
+  const [,setUser] = useState<User>()
   const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
-  const [isRecipePopupOpen, setIsRecipePopupOpen] = useState(false)
+  const [, setIsRecipePopupOpen] = useState(false)
+  const [generatedRecipes, setGeneratedRecipes] = useAtom(generatedRecipesAtom)
 
   // ログイン
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function RecipesPage() {
   // 保存ボタンでDB保存
 
   //idの割り当てのためにtypesのidの?消しちゃった
-  const startCooking = (recipeId: string) => {
+  const startCooking = (recipeId: string) => {    
     router.push(`/recipes/steps`)
   }
 
@@ -69,22 +69,32 @@ export default function RecipesPage() {
         <p className="text-center mb-6 text-gray-600 dark:text-gray-300">あなたの材料から作れるレシピです</p>
 
         <div className="w-full space-y-4">
-          {recipes.map((recipe) => (
+          {generatedRecipes.map((recipe) => (
             <div
-              key={recipe.id}
+              key={recipe.key}
               className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setCurrentRecipe(recipe)}
+              onClick={() => setCurrentRecipe({
+              id: "",
+              title: recipe.title,
+              description: "", // GeneratedRecipeTypesにはdescriptionがないため空文字
+              ingredients: recipe.ingredients,
+              steps: recipe.steps,
+              is_favorite: false, // デフォルト値
+              photo_url: "", // デフォルト値
+              user_id: undefined,
+              created_at: undefined,
+              })}
             >
               <div className="p-4">
                 <h2 className="text-xl font-medium">{recipe.title}</h2>
-                <p className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{recipe.description}</p>
+                
                 
               </div>
             </div>
           ))}
         </div>
 
-        {recipes.length === 0 && (
+        {generatedRecipes.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-gray-400">
               レシピが見つかりませんでした。別の材料を試してみてください。
@@ -104,48 +114,4 @@ export default function RecipesPage() {
     </main>
   )
 }
-
-
-// return (
-//   <main>
-
-//     <header>
-//       <Link href="/ingredients"> <ArrowLeft/><span>戻る</span> </Link>
-//       <h1>おすすめレシピ</h1>
-//     </header>
-
-//     <div>
-//       <p>あなたの材料から作れるレシピです</p>
-
-//       <div>
-//         {recipes.map((recipe) => (
-//           <div key={recipe.id} onClick={() => setCurrentRecipe(recipe)}>
-//             <div>
-//               <h2>{recipe.title}</h2>
-//               <p>{recipe.description}</p>
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {recipes.length === 0 && (
-//         <div>
-//           <p>
-//             レシピが見つかりませんでした。別の材料を試してみてください。
-//           </p>
-//         </div>
-//       )}
-//     </div>
-
-//     {selectedRecipe && (
-//       <RecipePopup
-//       recipe={{
-//         ...selectedRecipe,
-//       }}
-//       onClose={() => setSelectedRecipe(null)}
-//       onStartCooking={() => startCooking(selectedRecipe.id)}
-//     />
-//   )}
-//   </main>
-// )
 

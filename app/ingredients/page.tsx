@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import { useAtom } from 'jotai'
-import { ingredientListAtom, recipeListAtom } from '@/lib/atoms'
+import { ingredientListAtom,generatedRecipesAtom } from '@/lib/atoms'
 import { IngredientTypes } from '@/types/recipeTypes' // <IngredientTypes[]>
 
 interface User {
@@ -38,7 +38,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const router = useRouter()
 
-  const [recipes, setRecipes] = useAtom(recipeListAtom) // <RecipeTypes[]>
+  const [recipes, setRecipes] = useAtom(generatedRecipesAtom) // <RecipeTypes[]>
 
   // ログイン
   useEffect(() => {
