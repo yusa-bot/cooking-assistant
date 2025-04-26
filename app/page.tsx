@@ -1,13 +1,16 @@
 "use client"
 
-import type React from "react"
-import { Camera, LogIn, ChefHat, ChevronRight, BookOpen } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Camera, Search, BookOpen, History, ChevronRight, Star, Clock, ChefHat } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useEffect } from "react"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import RecipePopup from "@/components/recipe-popup"
-import { RecipeTypes, IngredientTypes, StepTypes } from "@/types/recipeTypes"
+import { RecipeTypes } from "@/types/recipeTypes"
+import Lottie from "lottie-react"
+// @ts-ignore
+import animationData from "@/public/animation/homeAnimation.json"
+import { createClient } from "@/utils/supabase/client"
 
 interface User {
   id: string
@@ -15,103 +18,100 @@ interface User {
   userName?: string
 }
 
-interface ApiResponse {
-  recipes: RecipeTypes[]
-}
-
 export default function Home() {
+  const supabase = createClient()
   const router = useRouter()
+
+  // ユーザー状態
+  const [user, setUser] = useState<User>()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [username, setUsername] = useState("")
-  const [cookingHistory, setCookingHistory] = useState<RecipeTypes[]>([])
-  const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeTypes[]>([])
+
+  // UI状態
+  const [activeTab, setActiveTab] = useState<'recent' | 'favorite'>('recent')
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginFeature, setLoginFeature] = useState("この機能")
-  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
-  const [user, setUser] = useState<User>()
-  const [showMenu, setShowMenu] = useState(false)
 
-  // ログイン状態と履歴を確認
+  // レシピデータ
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
+  const [cookingHistory, setCookingHistory] = useState<RecipeTypes[]>([])
+  const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeTypes[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  // ユーザー情報の取得
   useEffect(() => {
     const fetchUser = async () => {
-      const res = await fetch("/api/auth/user")
-      if (!res.ok) {
-        setIsLoggedIn(false)
-        setUsername("")
-        return
-      }
-      
-      const data = await res.json()      
-      if (data.user) {
-        setUser(data.user)
-        setIsLoggedIn(true)
-        setUsername(data.user.userName || "")
-      } else {
-        setIsLoggedIn(false)
-        setUsername("")
+      setIsLoading(true)
+      try {
+        const res = await fetch("/api/auth/user")
+        if (!res.ok) {
+          setIsLoggedIn(false)
+          setUsername("")
+          setIsLoading(false)
+          return
+        }
+        
+
+        const data = await res.json()
+        console.log(data)
+        if (data.user) {
+          setUser(data.user)
+          setIsLoggedIn(true)
+          setUsername(data.user.userName || "")
+          await fetchUserData(data.user)
+        } else {
+          setIsLoggedIn(false)
+          setUsername("")
+        }
+      } catch (error) {
+        console.error("ユーザー情報の取得に失敗しました", error)
+      } finally {
+        setIsLoading(false)
       }
     }
+
     fetchUser()
   }, [])
-      
-  useEffect(() => {
-    if (!user) return
-    
-    const userData = user as User
-    
-    // ログイン済みの場合、履歴データを取得
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch("/api/recipes", {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${userData.id}`,
-          },
-        })
-        if (!res.ok) throw new Error(`Error fetching recipes: ${res.status}`);
 
-        const data = await res.json()
-        console.log("履歴データ:", data)
+  // ユーザーデータの取得
+  const fetchUserData = async (userData: User) => {
+    try {
+      // 履歴の取得
+      const historyRes = await fetch("/api/recipes", {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${userData.id}` },
+      })
+
+      if (historyRes.ok) {
+        const data = await historyRes.json()
         setCookingHistory(data || [])
-      } catch (err) {
-        console.error("履歴の取得エラー:", err)
-        setCookingHistory([])
       }
-    }
 
-    // ログイン済みの場合、レシピ帳データを取得
-    const fetchFavorite = async () => {
-      try {
-        const res = await fetch("/api/recipes/favorite", {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${userData.id}`,
-          },
-        })
-        if (!res.ok) throw new Error("レシピ帳取得に失敗")
-        const data = await res.json()
-        console.log("レシピ帳データ:", data)
+      // お気に入りの取得
+      const favoriteRes = await fetch("/api/recipes/favorite", {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${userData.id}` },
+      })
+
+      if (favoriteRes.ok) {
+        const data = await favoriteRes.json()
         setFavoriteRecipes(data || [])
-      } catch (err) {
-        console.error("レシピ帳の取得エラー:", err)
-        setFavoriteRecipes([])
       }
+    } catch (err) {
+      console.error("データ取得エラー:", err)
     }
-    
-    fetchHistory()
-    fetchFavorite()
-  }, [user]);
-  
-  // ログアウト処理
-  const handleLogout = () => {
-    localStorage.removeItem("user")
-    setIsLoggedIn(false)
-    setUsername("")
   }
 
-  // 未ログイン時にログインモーダルを表示
-  const handleScanClick = (e: React.MouseEvent) => {
-    e.preventDefault()
+  // ログアウト処理
+  const handleLogout = () => {
+    supabase.auth.signOut()
+    setIsLoggedIn(false)
+    setUsername("")
+    router.push("/login")
+  }
+
+  // スキャン開始
+  const handleScanClick = () => {
     if (!isLoggedIn) {
       setLoginFeature("材料スキャン機能")
       setShowLoginModal(true)
@@ -125,165 +125,389 @@ export default function Home() {
     setShowLoginModal(false)
   }
 
-  // お気にレシピをクリックしたときの処理
+  // レシピ選択
   const handleRecipeClick = (recipe: RecipeTypes) => {
     setSelectedRecipe({
       ...recipe,
-      steps: recipe.steps || [],
-      ingredients: recipe.ingredients || []
+      ingredients: recipe.ingredients || [],
+      steps: recipe.steps || []
     })
   }
 
-  // 履歴をクリックしたときの処理
-  const handleHistoryClick = (recipe: RecipeTypes) => {
-    setSelectedRecipe({
-      ...recipe,
-      steps: recipe.steps || [],
-      ingredients: recipe.ingredients || []      
-    })
-  }
-
-  // 調理を開始する
+  // 調理開始
   const startCooking = (recipeId: string, source: string) => {
-    // 遷移元を記録
     localStorage.setItem("recipeSource", source)
     router.push(`/recipes/${recipeId}/steps`)
   }
 
+  // 表示するレシピリスト
+  const displayRecipes = activeTab === 'recent' ? cookingHistory : favoriteRecipes
+
   return (
-    <main className="flex min-h-screen flex-col bg-white">
-      {/* ヘッダー */}
-      <header className="w-full px-4 py-2 flex items-center justify-between border-b">
-        <div className="flex items-center">
-          <ChefHat className="h-5 w-5 text-green-600 mr-1" />
-          <h1 className="text-lg font-bold">AIレシピアシスタント</h1>
-        </div>
-        
-        {/* ハンバーガーメニュー */}
-        {isLoggedIn && (
-          <div className="relative">
-            <button 
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-1 hover:bg-gray-100 rounded-full"
+    <main className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+      
+      <div className="relative bg-white shadow-md">
+        <div
+          className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='1' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        />
+
+        <header className="relative flex items-center justify-between px-4 py-3 max-w-5xl mx-auto">
+          <div className="flex items-center gap-2">
+            <div className="bg-green-600 rounded-lg p-1.5">
+              <ChefHat className="w-5 h-5 text-white" />
+            </div>
+            <h1
+              className="text-2xl font-extrabold tracking-tighter text-green-600 select-none"
+              style={{
+                fontFamily: "'BIZ UDPGothic', 'M PLUS Rounded 1c', 'Noto Sans JP', sans-serif",
+                letterSpacing: '-0.08em',
+                fontWeight: 900,
+                lineHeight: 1,
+              }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
-                <line x1="4" x2="20" y1="12" y2="12"></line>
-                <line x1="4" x2="20" y1="6" y2="6"></line>
-                <line x1="4" x2="20" y1="18" y2="18"></line>
-              </svg>
-            </button>
-            
-            {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-                <div className="py-1">
-                  <Link 
-                    href="/recipe-book" 
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-                    onClick={() => setShowMenu(false)}
-                  >
-                    <BookOpen className="inline-block h-4 w-4 mr-2" />
-                    レシピ帳
-                  </Link>
-                  <Link 
-                    href="/history" 
-                    className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-                    onClick={() => setShowMenu(false)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
-                      <path d="M12 8v4l3 3"></path>
-                      <circle cx="12" cy="12" r="10"></circle>
-                    </svg>
-                    履歴
-                  </Link>
-                  <button 
-                    onClick={() => {
-                      handleLogout();
-                      setShowMenu(false);
-                    }} 
-                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                  >
-                    <LogIn className="inline-block h-4 w-4 mr-2" />
-                    ログアウト
-                  </button>
-                </div>
-              </div>
-            )}
+              <span style={{ fontSize: '1.3em', letterSpacing: '-0.12em' }}>AI</span>
+              <span style={{ fontSize: '1em', marginLeft: '0.1em' }}>Chef</span>
+            </h1>
           </div>
-        )}
-      </header>
 
-      <div className="p-4 pb-0 w-full">
-        <p className="text-center text-xs text-gray-500 mb-1">
-          材料の写真を撮影してAIがレシピを提案します
-        </p>
-
-        {isLoggedIn && (
-          <p className="text-center text-sm text-gray-600">
-            ようこそ、<span className="font-medium">{username}</span> さん
-          </p>
-        )}
-
-        <div className="mt-3">
-          <button
-            onClick={handleScanClick}
-            className="h-12 text-md font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full shadow-sm"
-          >
-            <Camera className="mr-2 h-5 w-5" />
-            材料をスキャンする
-          </button>
-        </div>
-      </div>
-
-      {/* 料理履歴セクション */}
-      <div className="px-4 pt-3 pb-16 w-full">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-bold">料理履歴</h2>
-          {isLoggedIn && cookingHistory.length > 0 && (
-            <Link href="/history" className="text-green-600 flex items-center text-xs">
-              もっと見る
-              <ChevronRight className="h-3 w-3 ml-1" />
-            </Link>
-          )}
-        </div>
-
-        {isLoggedIn ? (
-          cookingHistory.length > 0 ? (
-            <div className="overflow-x-auto -mx-4 px-4">
-              <div className="flex space-x-2 pb-2" style={{ minWidth: "min-content" }}>
-                {cookingHistory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex-shrink-0 w-36 bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm cursor-pointer"
-                    onClick={() => handleHistoryClick(item)}
-                  >
-                    <div className="aspect-square w-full overflow-hidden">
-                      <img
-                        src={item.photo_url || "/placeholder.svg"}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-2">
-                      <h3 className="font-medium text-sm truncate">{item.title}</h3>
-                    </div>
-                  </div>
-                ))}
+          {isLoggedIn ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-green-800 hidden md:inline-block">
+                {username} さん
+              </span>
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => router.push('/recipe-book')}
+                  className="p-2 rounded-full hover:bg-green-50 transition-colors"
+                  aria-label="レシピ帳"
+                >
+                  <BookOpen className="h-5 w-5 text-green-700" />
+                </button>
+                <button
+                  onClick={() => router.push('/history')}
+                  className="p-2 rounded-full hover:bg-green-50 transition-colors"
+                  aria-label="履歴"
+                >
+                  <History className="h-5 w-5 text-green-700" />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-full hover:bg-red-50 transition-colors"
+                  aria-label="ログアウト"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                </button>
               </div>
             </div>
           ) : (
-            <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200 mt-1">
-              <p className="text-gray-600 text-sm">まだ料理履歴がありません。最初の料理を記録しましょう！</p>
+            <Link
+              href="/login"
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+            >
+              ログイン
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
+        </header>
+      </div>
+
+      {/* メインコンテンツ */}
+      <div className="max-w-5xl mx-auto px-4 pb-0">
+        {/* ヒーローセクション */}
+        <section className="py-6 md:py-10 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+          {/* --- パターン1: ヒーロー右側 --- */}
+          {/* 
+          <div className="md:w-1/2 flex justify-center z-10">
+            <div className="relative w-80 h-80 hidden sm:block">
+              <div className="absolute -inset-2 bg-gradient-to-r from-green-400/60 to-green-200/30 rounded-full blur-lg opacity-60"></div>
+              <div className="relative bg-white rounded-full p-4 shadow-lg shadow-green-100">
+                <Lottie
+                  animationData={animationData}
+                  loop={true}
+                  style={{ width: '100%', height: '100%', opacity: 0.8 }}
+                  className="transform scale-110"
+                />
+              </div>
+            </div>
+            <div className="sm:hidden">
+              <Lottie
+                animationData={animationData}
+                loop={true}
+                style={{ width: 250, height: 250, opacity: 0.8 }}
+              />
+            </div>
+          </div>
+          */}
+
+          {/* --- パターン2: ヒーロー背景 --- */}
+          {/* 
+          <div className="absolute inset-0 flex justify-center items-center pointer-events-none z-0">
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              style={{ width: 500, height: 500, opacity: 0.5 }}
+            />
+          </div>
+          */}
+
+          {/* --- パターン3: フィーチャー紹介前 --- */}
+          {/* 
+          <div className="flex justify-center items-center mt-16 mb-2">
+            <div className="relative w-56 h-56">
+              <Lottie
+                animationData={animationData}
+                loop={true}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+          </div>
+          */}
+
+          {/* --- パターン4: フッター直上 --- */}
+          {/* 
+          <div className="flex justify-center items-center mt-12 mb-2">
+            <div className="relative w-44 h-44">
+              <Lottie
+                animationData={animationData}
+                loop={true}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </div>
+          </div>
+          */}
+
+          {/* --- ヒーロー左側テキスト --- */}
+          <div className="md:w-1/2 space-y-4 z-10">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight">
+              お持ちの材料から<br />
+              <span className="text-green-600">AI</span>が最適なレシピを提案
+            </h2>
+            <p className="text-gray-600">
+              写真を撮るだけで、あなたに合ったレシピを自動提案。
+              無駄なく、おいしく、簡単に。
+            </p>
+
+            <div className="pt-3">
+              <button
+                onClick={handleScanClick}
+                className="group flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 transition duration-150 font-medium shadow-md shadow-green-200"
+              >
+                <Camera className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                材料をスキャンする
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* パターン3: フィーチャー紹介前（有効化する場合は上記コメントアウトを外してここに移動） */}
+        {/* 
+        <div className="flex justify-center items-center mt-16 mb-2">
+          <div className="relative w-56 h-56">
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        </div>
+        */}
+
+        {/* タブ切り替え */}
+        {isLoggedIn && (
+          <div className="my-6">
+            <div className="flex space-x-2 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab('recent')}
+                className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                  activeTab === 'recent'
+                    ? 'text-green-700'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                最近の料理
+                {activeTab === 'recent' && (
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-600"></span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('favorite')}
+                className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+                  activeTab === 'favorite'
+                    ? 'text-green-700'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                お気に入り
+                {activeTab === 'favorite' && (
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-600"></span>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* レシピグリッド */}
+        {isLoggedIn ? (
+          isLoading ? (
+            <div className="py-12 text-center">
+              <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-green-500 border-r-transparent"></div>
+              <p className="mt-4 text-gray-600">読み込み中...</p>
+            </div>
+          ) : displayRecipes.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {displayRecipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  onClick={() => handleRecipeClick(recipe)}
+                  className="group bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-100 hover:border-green-200 hover:-translate-y-0.5"
+                >
+                  <div className="aspect-[4/3] relative overflow-hidden">
+                    <img
+                      src={recipe.photo_url || "/placeholder.svg"}
+                      alt={recipe.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {recipe.is_favorite && (
+                      <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-medium text-gray-900 line-clamp-1">{recipe.title}</h3>
+                    <div className="mt-1 flex items-center text-xs text-gray-500">
+                      <Clock className="h-3 w-3 mr-1" />
+                      <span>{recipe.created_at?.split('T')[0] || '最近'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg p-8 text-center shadow-sm border border-gray-100">
+              <div className="inline-block p-3 bg-green-50 rounded-full mb-3">
+                {activeTab === 'recent' ? (
+                  <History className="h-6 w-6 text-green-600" />
+                ) : (
+                  <Star className="h-6 w-6 text-green-600" />
+                )}
+              </div>
+              <h3 className="text-lg font-medium mb-2">
+                {activeTab === 'recent' ? '料理履歴がありません' : 'お気に入りがありません'}
+              </h3>
+              <p className="text-gray-600 text-sm mb-4">
+                {activeTab === 'recent'
+                  ? '材料をスキャンして最初の料理を記録しましょう！'
+                  : 'お気に入りのレシピを追加して、いつでも簡単にアクセスできます'}
+              </p>
+              <button
+                onClick={handleScanClick}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+              >
+                <Camera className="h-4 w-4" />
+                材料をスキャン
+              </button>
             </div>
           )
         ) : (
-          <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200 mt-1">
-            <p className="text-gray-600 mb-1 text-sm">ログインすると料理履歴を保存できます</p>
-            <Link href="/login" className="text-green-600 hover:text-green-700 text-xs font-medium">
-              ログインして履歴を保存する
-            </Link>
+          <div className="bg-white rounded-lg p-8 text-center shadow-sm border border-gray-100 mt-6">
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-50 rounded-full flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path>
+                <path d="M12 8v4"></path>
+                <path d="M12 16h.01"></path>
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium mb-2">ログインして全機能を活用</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              ログインすると料理履歴の保存、お気に入りレシピの登録、パーソナライズされた提案など、すべての機能が利用できます。
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/login"
+                className="px-6 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium flex items-center justify-center"
+              >
+                ログインする
+              </Link>
+              <button
+                onClick={handleScanClick}
+                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors font-medium flex items-center justify-center gap-1.5"
+              >
+                <Camera className="h-4 w-4" />
+                お試しスキャン
+              </button>
+            </div>
           </div>
         )}
+
+        {/* フィーチャー紹介 */}
+        <section className="pt-8 border-t border-gray-200">
+          <h2 className="text-xl font-bold text-center mb-8">アプリの機能</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 text-center">
+              <div className="inline-block p-3 bg-blue-50 rounded-full mb-3">
+                <Camera className="h-5 w-5 text-blue-600" />
+              </div>
+              <h3 className="font-medium text-lg mb-2">材料スキャン</h3>
+              <p className="text-gray-600 text-sm">
+                手持ちの材料を撮影するだけで、AIが自動で材料を認識し、最適なレシピを提案します。
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 text-center">
+              <div className="inline-block p-3 bg-amber-50 rounded-full mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
+                  <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446A9 9 0 1 1 12 3z"></path>
+                  <path d="M8 9h8"></path>
+                  <path d="M8 13h6"></path>
+                  <path d="M8 17h4"></path>
+                </svg>
+              </div>
+              <h3 className="font-medium text-lg mb-2">音声ガイド</h3>
+              <p className="text-gray-600 text-sm">
+                調理中は手が汚れていても大丈夫。音声で次のステップを案内し、質問にも答えます。
+              </p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 text-center">
+              <div className="inline-block p-3 bg-purple-50 rounded-full mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600">
+                  <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  <path d="m9 14 2 2 4-4"></path>
+                </svg>
+              </div>
+              <h3 className="font-medium text-lg ">料理記録</h3>
+              <p className="text-gray-600 text-sm">
+                完成した料理を記録して、お気に入りに登録。あとで簡単に見返すことができます。
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* パターン4: フッター直上 */}
+        <div className="flex justify-center items-center mt-0 mb-0">
+          <div className="relative w-30 h-30">
+            <Lottie
+              animationData={animationData}
+              loop={true}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* フッター */}
+      <footer className="bg-gray-50 border-t border-gray-200 py-6">
+        <div className="max-w-5xl mx-auto px-4 text-center text-gray-600 text-sm">
+          <p>© 2025 AI Chef - AIレシピアシスタント</p>
+        </div>
+      </footer>
 
       {/* レシピポップアップ */}
       {selectedRecipe && (
@@ -294,9 +518,12 @@ export default function Home() {
         />
       )}
 
-      {/* ログインプロンプトモーダル */}
-      <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName={loginFeature} />
+      {/* ログインプロンプト */}
+      <LoginPromptModal
+        isOpen={showLoginModal}
+        onClose={closeLoginModal}
+        featureName={loginFeature}
+      />
     </main>
   )
 }
-
