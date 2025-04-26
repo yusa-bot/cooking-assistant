@@ -75,13 +75,13 @@ export async function generateRecipesFromIngredients(
         }
 
         const generatedRecipes: GeneratedRecipeTypes[] = validation.data.recipes.map((r, i) => ({
-            key: i, // unique key を振る
+            key: i, // unique id を振る
             title: r.title,
             ingredients: r.ingredients,
             steps: r.steps.map((s) => ({
                 instruction: s.instruction,
                 step_number: s.step_number,
-                timer: s.timer ?? undefined,
+                timer: s.timer ?? "", // nullは空文字で扱う
             })),
         }));
 
@@ -119,7 +119,7 @@ ${question}
             messages: [
                 {
                     role: "system",
-                    content: "あなたは料理の専門家で、食材の特性や調理科学に精通したアシスタントです。ユーザーのレシピ情報と現在の調理段階を正確に把握し、具体的かつ実践的なアドバイスを提供してください。回答はAnswerSchemaに従い、responseフィールドに簡潔かつ正確な答えをJSON形式で出力してください。",
+                    content: "あなたは料理の専門家で、食材の特性や調理科学に精通したアシスタントです。ユーザーのレシピ情報と現在の調理段階を正確に把握し、できるだけ短く一言で返して。回答はAnswerSchemaに従い、responseフィールドに簡潔かつ正確な答えをJSON形式で出力してください。",
                 },
                 { role: "user", content: userContent },
             ],
