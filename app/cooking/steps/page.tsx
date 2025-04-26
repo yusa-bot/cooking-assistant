@@ -168,12 +168,7 @@ export default function RecipeStepsPage() {
       </header>
       <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
         <div className="mb-4 flex items-center">
-          {/* 音声認識による質問の表示 */}
-          {voiceQuestion && (
-            <div className="mb-2 p-2 bg-yellow-100 text-gray-800 rounded text-sm w-full text-center">
-              ユーザーの質問: {voiceQuestion}
-            </div>
-          )}
+          
           {recipe.steps.map((_, idx) => (
         <>
           {idx > 0 && (

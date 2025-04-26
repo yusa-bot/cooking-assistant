@@ -75,7 +75,14 @@ export class SpeechRecognitionManager {
       
       // 中間結果ではなく、確定した結果のみを処理
       if (event.results[lastResultIndex].isFinal) {
-        onResult(transcript);
+        const wakeWord = "シェフ";
+        const index = transcript.indexOf(wakeWord);
+        if (index !== -1) {
+          const text = transcript.slice(index + wakeWord.length).trim();
+          if (text.length > 0) {
+            onResult(text);
+          }
+        }
       }
     }
 
