@@ -75,13 +75,13 @@ export async function generateRecipesFromIngredients(
         }
 
         const generatedRecipes: GeneratedRecipeTypes[] = validation.data.recipes.map((r, i) => ({
-            key: i, // unique key を振る
+            key: i, // unique id を振る
             title: r.title,
             ingredients: r.ingredients,
             steps: r.steps.map((s) => ({
                 instruction: s.instruction,
                 step_number: s.step_number,
-                timer: s.timer ?? undefined,
+                timer: s.timer ?? "", // nullは空文字で扱う
             })),
         }));
 
