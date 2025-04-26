@@ -28,7 +28,8 @@ export default function IngredientsPage({ capturedImage }: Props) {
     amount: '',
     unit: ''
   })
-  const [ingredient, setIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
+  const [ingredientList, setIngredientList] = useState<IngredientTypes[]>([])
+  const [currentIngredient, setcurrentIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -38,7 +39,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const router = useRouter()
 
-  const [recipes, setRecipes] = useAtom(generatedRecipesAtom) // <RecipeTypes[]>
+  const [, setGeneratedRecipes] = useAtom(generatedRecipesAtom) // <RecipeTypes[]>
 
   // ログイン
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
         setShowLoginModal(true)
       }
     }
+    setIngredientList(currentIngredient)
     fetchUser()
   },[])
 
@@ -66,13 +68,13 @@ export default function IngredientsPage({ capturedImage }: Props) {
     if (addIngredient && addIngredient.name) {
       if (editingIndex !== null) {
         // 既存の材料を編集する場合
-        const updatedIngredients = [...ingredient];
+        const updatedIngredients = [...ingredientList];
         updatedIngredients[editingIndex] = addIngredient;
-        setIngredient(updatedIngredients);
+        setIngredientList(updatedIngredients);
         setEditingIndex(null);
-      } else if (!ingredient.some(i => i.name === addIngredient.name)) {
+      } else if (!ingredientList.some(i => i.name === addIngredient.name)) {
         // 新しい材料を追加する場合
-        setIngredient([...ingredient, addIngredient]);
+        setIngredientList([...ingredientList, addIngredient]);
       }
       setNewIngredient({ name: '', amount: '', unit: '' });
       setShowSuggestions(false);
@@ -81,9 +83,9 @@ export default function IngredientsPage({ capturedImage }: Props) {
 
   // 材料を削除する関数
   const removeIngredient = (index: number) => {
-    const updatedIngredients = [...ingredient];
+    const updatedIngredients = [...ingredientList];
     updatedIngredients.splice(index, 1);
-    setIngredient(updatedIngredients);
+    setIngredientList(updatedIngredients);
     if (editingIndex === index) {
       setEditingIndex(null);
       setNewIngredient({ name: '', amount: '', unit: '' });
@@ -93,17 +95,17 @@ export default function IngredientsPage({ capturedImage }: Props) {
   // 材料を編集モードにする関数
   const editIngredient = (index: number) => {
     setEditingIndex(index);
-    setNewIngredient({ ...ingredient[index] });
+    setNewIngredient({ ...ingredientList[index] });
   }
 
   // 材料の特定フィールドを直接編集する関数
   const updateIngredient = (index: number, field: keyof IngredientTypes, value: string) => {
-    const updatedIngredients = [...ingredient];
+    const updatedIngredients = [...ingredientList];
     updatedIngredients[index] = {
       ...updatedIngredients[index],
       [field]: value
     };
-    setIngredient(updatedIngredients);
+    setIngredientList(updatedIngredients);
   }
 
   // 入力値が変更されたときの処理
@@ -135,16 +137,16 @@ export default function IngredientsPage({ capturedImage }: Props) {
 
   // レシピ提案ページに進む
   const goToRecipes = async () => {
-
+    setcurrentIngredient(ingredientList) // <IngredientTypes[]>
     const res = await fetch('/api/ai/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ingredient }),
+      body: JSON.stringify({ currentIngredient }),
     });
     if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
 
     const data = await res.json()
-    setRecipes(data)
+    setGeneratedRecipes(data)
     router.push("/recipes")
   }
 
@@ -177,7 +179,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
         <div className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6 shadow-sm">
           <h2 className="text-lg font-medium mb-3">材料リスト</h2>
 
-          {ingredient.length > 0 ? (
+          {ingredientList.length > 0 ? (
             <div className="overflow-x-auto w-full mb-4">
               <table className="min-w-full table-auto">
                 <thead>
@@ -189,7 +191,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {ingredient.map((item, index) => (
+                  {ingredientList.map((item, index) => (
                     <tr key={index} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750">
                       <td className="px-3 py-3 text-sm">
                         <input
@@ -289,7 +291,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
         <div className="w-full">
           <button
             onClick={goToRecipes}
-            disabled={ingredient.length === 0}
+            disabled={ingredientList.length === 0}
             className="h-14 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-full w-full shadow-md transition-all duration-200"
           >
             レシピ提案へ進む

@@ -3,7 +3,7 @@ import { GeneratedRecipeTypes, IngredientTypes} from "@/types/recipeTypes";
 export async function POST(request: Request) {
     const body = await request.json();
     console.log("Received body:", body);
-    const ingredients:IngredientTypes[] = body.ingredient;
+    const ingredients:IngredientTypes[] = body.currentIngredient;
     try {
         const generatedRecipes:GeneratedRecipeTypes[] = await generateRecipesFromIngredients(ingredients);
         return new Response(JSON.stringify(generatedRecipes), {

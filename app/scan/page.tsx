@@ -18,7 +18,7 @@ export default function ScanPage() {
   const router = useRouter()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [,setIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
+  const [currentIngredient,setCurrentIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
   // ログインチェック
@@ -130,10 +130,11 @@ export default function ScanPage() {
 
       const data = await res.json()
       console.log("取得した食材:", data)
-      setIngredient(data) // <IngredientTypes[]>
+      setCurrentIngredient(data) // <IngredientTypes[]>
+      console.log("jotaiに保存した食材:",currentIngredient)
     } catch (err) {
       console.error("食材の取得エラー:", err)
-      setIngredient([])
+      setCurrentIngredient([])
     }
     router.push("/ingredients")
   }

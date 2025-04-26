@@ -20,9 +20,10 @@ export default function RecipesPage() {
   const router = useRouter()
   const [, setToken] = useState<string | null>(null)
   const [,setUser] = useState<User>()
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
   const [, setIsRecipePopupOpen] = useState(false)
-  const [generatedRecipes, setGeneratedRecipes] = useAtom(generatedRecipesAtom)
+  const [generatedRecipes, ] = useAtom(generatedRecipesAtom)
 
   // ログイン
   useEffect(() => {
@@ -47,7 +48,8 @@ export default function RecipesPage() {
   // 保存ボタンでDB保存
 
   //idの割り当てのためにtypesのidの?消しちゃった
-  const startCooking = (recipeId: string) => {    
+  const startCooking = () => {    
+    setCurrentRecipe(selectedRecipe);
     router.push(`/recipes/steps`)
   }
 
@@ -73,7 +75,7 @@ export default function RecipesPage() {
             <div
               key={recipe.key}
               className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setCurrentRecipe({
+              onClick={() => setSelectedRecipe({
               id: "",
               title: recipe.title,
               description: "", // GeneratedRecipeTypesにはdescriptionがないため空文字
@@ -102,13 +104,13 @@ export default function RecipesPage() {
           </div>
         )}
       </div>
-      {currentRecipe && (
+      {selectedRecipe && (
         <RecipePopup
         recipe={{
-          ...currentRecipe,
+          ...selectedRecipe,
         }}
         onClose={() => setIsRecipePopupOpen(false)}
-        onStartCooking={() => startCooking(currentRecipe.id)}
+        onStartCooking={() => startCooking()}
       />
     )}
     </main>
