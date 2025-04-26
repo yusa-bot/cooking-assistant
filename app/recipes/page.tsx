@@ -16,39 +16,12 @@ interface User {
   userName?: string
 }
 
-// interface Ingredient {
-//   name: string
-//   amount: number
-//   unit: string
-// }
-
-// interface Step {
-//   instruction: string
-//   step_number: number
-//   timer?: string
-// }
-
-// interface Recipe {
-//   id: string
-//   title: string
-//   imageUrl?: string
-//   description: string
-//   ingredients?: Ingredient[]
-//   steps?: Step[]
-//   date: string
-//   difficulty?: string
-//   cookingTime?: string
-// }
-
-// interface ApiResponse {
-//   recipes: Recipe[]
-// }
 
 export default function RecipesPage() {
   const router = useRouter()
-  const [recipes, setRecipes] = useState<Recipe[]>([])
+  const [recipes, setRecipes] = useState<RecipeTypes[]>([])
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null)
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null)
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [user,setUser] = useState<User>()
   const [recipe, setRecipe] = useAtom(recipeAtom)
@@ -82,8 +55,8 @@ export default function RecipesPage() {
         body: JSON.stringify({ ingredient }),
       });
       if (!res.ok) throw new Error(`Error generating recipes: ${res.status}`);
-      const data: ApiResponse = await res.json()
-      setRecipes(data.recipes || [])
+      const data: RecipeTypes[] = await res.json()
+      setRecipes(data || [])
     }
     generateRecipes(ingredient)
   }, [])
@@ -138,12 +111,7 @@ export default function RecipesPage() {
               <div className="p-4">
                 <h2 className="text-xl font-medium">{recipe.title}</h2>
                 <p className="text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{recipe.description}</p>
-                <div className="flex items-center mt-3 text-sm text-gray-500 dark:text-gray-400">
-                  <Clock className="h-4 w-4 mr-1" />
-                  <span>{recipe.cookingTime}</span>
-                  <span className="mx-2">•</span>
-                  <span>{recipe.difficulty}</span>
-                </div>
+                
               </div>
             </div>
           ))}
