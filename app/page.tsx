@@ -11,6 +11,8 @@ import Lottie from "lottie-react"
 // @ts-ignore
 import animationData from "@/public/animation/homeAnimation.json"
 import { createClient } from "@/utils/supabase/client"
+import { useAtom } from "jotai"
+import { currentRecipeAtom } from "@/lib/atoms"
 
 interface User {
   id: string
@@ -31,6 +33,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'recent' | 'favorite'>('recent')
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginFeature, setLoginFeature] = useState("この機能")
+  const [curentRecipe, setCurentRecipe] = useAtom(currentRecipeAtom)
 
   // レシピデータ
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
@@ -136,7 +139,7 @@ export default function Home() {
 
   // 調理開始
   const startCooking = (recipeId: string, source: string) => {
-    localStorage.setItem("recipeSource", source)
+    setCurentRecipe(selectedRecipe)
     router.push(`/recipes/${recipeId}/steps`)
   }
 
@@ -222,68 +225,7 @@ export default function Home() {
       <div className="max-w-5xl mx-auto px-4 pb-0">
         {/* ヒーローセクション */}
         <section className="py-6 md:py-10 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
-          {/* --- パターン1: ヒーロー右側 --- */}
-          {/* 
-          <div className="md:w-1/2 flex justify-center z-10">
-            <div className="relative w-80 h-80 hidden sm:block">
-              <div className="absolute -inset-2 bg-gradient-to-r from-green-400/60 to-green-200/30 rounded-full blur-lg opacity-60"></div>
-              <div className="relative bg-white rounded-full p-4 shadow-lg shadow-green-100">
-                <Lottie
-                  animationData={animationData}
-                  loop={true}
-                  style={{ width: '100%', height: '100%', opacity: 0.8 }}
-                  className="transform scale-110"
-                />
-              </div>
-            </div>
-            <div className="sm:hidden">
-              <Lottie
-                animationData={animationData}
-                loop={true}
-                style={{ width: 250, height: 250, opacity: 0.8 }}
-              />
-            </div>
-          </div>
-          */}
-
-          {/* --- パターン2: ヒーロー背景 --- */}
-          {/* 
-          <div className="absolute inset-0 flex justify-center items-center pointer-events-none z-0">
-            <Lottie
-              animationData={animationData}
-              loop={true}
-              style={{ width: 500, height: 500, opacity: 0.5 }}
-            />
-          </div>
-          */}
-
-          {/* --- パターン3: フィーチャー紹介前 --- */}
-          {/* 
-          <div className="flex justify-center items-center mt-16 mb-2">
-            <div className="relative w-56 h-56">
-              <Lottie
-                animationData={animationData}
-                loop={true}
-                style={{ width: '100%', height: '100%' }}
-              />
-            </div>
-          </div>
-          */}
-
-          {/* --- パターン4: フッター直上 --- */}
-          {/* 
-          <div className="flex justify-center items-center mt-12 mb-2">
-            <div className="relative w-44 h-44">
-              <Lottie
-                animationData={animationData}
-                loop={true}
-                style={{ width: '100%', height: '100%' }}
-              />
-            </div>
-          </div>
-          */}
-
-          {/* --- ヒーロー左側テキスト --- */}
+          
           <div className="md:w-1/2 space-y-4 z-10">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-800 leading-tight">
               お持ちの材料から<br />
@@ -306,20 +248,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* パターン3: フィーチャー紹介前（有効化する場合は上記コメントアウトを外してここに移動） */}
-        {/* 
-        <div className="flex justify-center items-center mt-16 mb-2">
-          <div className="relative w-56 h-56">
-            <Lottie
-              animationData={animationData}
-              loop={true}
-              style={{ width: '100%', height: '100%' }}
-            />
-          </div>
-        </div>
-        */}
-
-        {/* タブ切り替え */}
         {isLoggedIn && (
           <div className="my-6">
             <div className="flex space-x-2 border-b border-gray-200">

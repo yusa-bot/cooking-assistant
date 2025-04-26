@@ -6,6 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
 import { RecipeTypes } from "@/types/recipeTypes"
+import { useAtom } from "jotai"
+import { currentRecipeAtom } from "@/lib/atoms"
 
 interface User {
     id: string
@@ -25,59 +27,58 @@ export default function RecipeBookPage() {
   const [username, setUsername] = useState("")
   const [user,setUser] = useState<User>()
   const [showMenu, setShowMenu] = useState(false)
+  const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
 
     // ログイン状態と履歴を確認
     useEffect(() => {
-        const fetchUser = async () => {
-            const res = await fetch("/api/auth/user")
-            if (!res.ok) {
-                setIsLoggedIn(false)
-                setUsername("")
-                return
-            }
-            
-            const data = await res.json()
-            console.log(data)
-            if (data.user) {
-                setIsLoggedIn(true)
-                setUsername(data.user.userName || "")
-            } else {
-                setIsLoggedIn(false)
-                setUsername("")
-                router.push("/login")
-            }
-        }
-        fetchUser()
-    },[user])
-        
-
-    useEffect(() => {
-
-        if (!user) return
-        const userData = user as User
-        setIsLoggedIn(true)
-        setUsername(userData.userName || "")
-  
-        // ログイン済みの場合、レシピ帳データを取得
-        const fetchFavorite = async () => {
-          try {
-            const res = await fetch("/api/recipes", {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${userData.id}`,
-              },
-            })
-            if (!res.ok) throw new Error("レシピ帳取得に失敗")
-              const data: RecipeTypes[] = await res.json()
-            setFavoriteRecipes(data)
-          } catch (err) {
-            console.error("レシピ帳の取得エラー:", err)
+      const fetchUserAndFavorites = async () => {
+        try {
+          const res = await fetch("/api/auth/user")
+          if (!res.ok) {
+            setIsLoggedIn(false)
+            setUsername("")
             setFavoriteRecipes([])
+            router.push("/login")
+            return
           }
+
+          const data = await res.json()
+          if (data.user) {
+            setIsLoggedIn(true)
+            setUsername(data.user.userName || "")
+            setUser(data.user)
+
+            // ログイン済みの場合、レシピ帳データを取得
+            try {
+              const recipesRes = await fetch("/api/recipes/favorite", {
+                method: 'GET',
+                headers: {
+                  Authorization: `Bearer ${data.user.id}`,
+                },
+              })
+              if (!recipesRes.ok) throw new Error("レシピ帳取得に失敗")
+              const recipesData: RecipeTypes[] = await recipesRes.json()
+              setFavoriteRecipes(recipesData)
+            } catch (err) {
+              console.error("レシピ帳の取得エラー:", err)
+              setFavoriteRecipes([])
+            }
+          } else {
+            setIsLoggedIn(false)
+            setUsername("")
+            setFavoriteRecipes([])
+            router.push("/login")
+          }
+        } catch (err) {
+          setIsLoggedIn(false)
+          setUsername("")
+          setFavoriteRecipes([])
+          router.push("/login")
         }
-        fetchFavorite()
-        
-      }, [router]);
+      }
+
+      fetchUserAndFavorites()
+    }, [])
 
   // レシピをクリックしたときの処理
   const handleRecipeClick = (recipe: RecipeTypes) => {
@@ -89,10 +90,11 @@ export default function RecipeBookPage() {
   }
 
   // 調理を開始する
-  const startCooking = (recipeId: string) => {
+  const startCooking = () => {
     // 遷移元を記録
-    localStorage.setItem("recipeSource", "recipe-book")
-    router.push(`/recipes/${recipeId}/steps`)
+    setCurrentRecipe(selectedRecipe)
+    
+    router.push(`/cooking/steps`)
   }
 
   if (!isLoggedIn) {
@@ -106,56 +108,10 @@ export default function RecipeBookPage() {
           <ArrowLeft className="h-5 w-5 mr-1" />
           <span>戻る</span>
         </Link>
-        <h1 className="text-xl font-semibold">レシピ帳</h1>
-        
-        {/* ハンバーガーメニュー */}
-        <div className="relative">
-          <button 
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-2 hover:bg-gray-100 rounded-full"
-            aria-label="メニューを開く"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
-              <line x1="4" x2="20" y1="12" y2="12"></line>
-              <line x1="4" x2="20" y1="6" y2="6"></line>
-              <line x1="4" x2="20" y1="18" y2="18"></line>
-            </svg>
-          </button>
-          
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-              <div className="py-1">
-                <Link 
-                  href="/history" 
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-                  onClick={() => setShowMenu(false)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
-                    <path d="M12 8v4l3 3"></path>
-                    <circle cx="12" cy="12" r="10"></circle>
-                  </svg>
-                  履歴
-                </Link>
-                <button 
-                  onClick={() => {
-                    localStorage.removeItem("user");
-                    setIsLoggedIn(false);
-                    setUsername("");
-                    router.push("/");
-                  }} 
-                  className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                    <polyline points="16 17 21 12 16 7"></polyline>
-                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                  </svg>
-                  ログアウト
-                </button>
-              </div>
-            </div>
-          )}
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-xl font-semibold text-center">レシピ帳</h1>
         </div>
+        <div className="w-16" /> {/* 右側のスペース確保用 */}
       </header>
 
       <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
@@ -198,7 +154,7 @@ export default function RecipeBookPage() {
         <RecipePopup
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
-          onStartCooking={() => startCooking(selectedRecipe.id!)}
+          onStartCooking={() => startCooking()}
         />
       )}
     </main>
