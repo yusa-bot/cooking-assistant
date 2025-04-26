@@ -9,14 +9,16 @@ export class SpeechRecognitionManager {
     // ブラウザがSpeechRecognitionをサポートしているか確認
     if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
       // ブラウザに応じたSpeechRecognitionを使用
-      const SpeechRecognition: SpeechRecognitionStatic =
+      const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       this.recognition = new SpeechRecognition()
 
       // 設定
-      this.recognition.lang = "ja-JP"
-      this.recognition.continuous = false
-      this.recognition.interimResults = false
+      if (this.recognition) {
+        this.recognition.lang = "ja-JP"
+        this.recognition.continuous = false
+        this.recognition.interimResults = false
+      }
     }
   }
 
