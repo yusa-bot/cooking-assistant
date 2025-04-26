@@ -12,32 +12,16 @@ import { recipeAtom } from '@/store/recipeAtom'
 import { RecipeTypes } from "@/types/recipeTypes"
 import { handleVoiceQuery } from "@/lib/handleVoiceQuery"
 
-const dummyRecipe: RecipeTypes = {
-  title: "Dummy Recipe",
-  description: "This is a dummy recipe.",
-  ingredients: [
-    { name: "Dummy Ingredient", amount: "1", unit: "pcs" }
-  ],
-  steps: [
-    { instruction: "まずは野菜を切りましょう", step_number: 1, timer: "" },
-    { instruction: "いい感じに来てね", step_number: 2, timer: "02:00" },
-    { instruction: "Dummy Step 2", step_number: 3, timer: "10:00" },
-  ],
-  is_favorite: false,
-  created_at: new Date().toISOString(),
-  user_id: "dummy_user",
-  id: "dummy_id",
-  photo_url: "dummy_photo_url"
-}
+
 export default function RecipeStepsPage() {  
   const router = useRouter()
-  //const [recipe] = useAtom(recipeAtom)
-  const recipe = dummyRecipe // For testing purposes, using a dummy recipe
+  const [recipe] = useAtom(recipeAtom)
+  
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isListening, setIsListening] = useState(false)
-  const [voiceQuestion, setVoiceQuestion] = useState("")
+  const [, setVoiceQuestion] = useState("")
   const [aiAnswer, setAiAnswer] = useState("")
-  const [showAiAnswer, setShowAiAnswer] = useState(false)
+  const [, setShowAiAnswer] = useState(false)
   const [isPausedForSpeech, setIsPausedForSpeech] = useState(false)
   const initialLoadRef = useRef(true)
   // 音声システムが初期化されたかどうかを追跡
@@ -129,7 +113,7 @@ export default function RecipeStepsPage() {
 
   // 完了セクションが表示されているときは特別なステップを表示する
   const step = showCompletionSection 
-    ? { instruction: "素晴らしい！調理が完了しました。お疲れ様でした！", step_number: recipe.steps.length + 1, timer: "" } 
+    ? { instruction: "調理が完了しました。お疲れ様でした！", step_number: recipe.steps.length + 1, timer: "" } 
     : recipe.steps[currentStepIndex]
 
   // 次のステップに進む関数
@@ -140,7 +124,7 @@ export default function RecipeStepsPage() {
       
       // 完了メッセージを読み上げる
       const synth = getSpeechSynthesis()
-      synth.speak("素晴らしい！調理が完了しました。お疲れ様でした！", "ja-JP", true)
+      synth.speak("調理が完了しました。お疲れ様でした！", "ja-JP", true)
     } else {
       setCurrentStepIndex(i => Math.min(i + 1, recipe.steps.length - 1))
     }
@@ -350,7 +334,7 @@ export default function RecipeStepsPage() {
                       initializeAudioSystem();
                     }}
                     className={`
-                      w-10 h-10 flex items-center justify-center rounded-full font-semibold
+                      w-7 h-7 flex items-center justify-center rounded-full font-semibold
                       ${idx === currentStepIndex
                         ? "bg-green-600 text-white"
                         : "bg-gray-300 text-gray-700"}
@@ -374,12 +358,20 @@ export default function RecipeStepsPage() {
                 <p className="text-gray-600 text-center mb-8">
                   調理が完了しました。写真を撮影して記録に残しましょう。
                 </p>
-                <button 
-                  onClick={handleCompleteClick}
-                  className="py-4 px-10 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors flex items-center"
-                >
-                  終了する
-                </button>
+                <div className="flex gap-4 w-full justify-center">
+                  <button 
+                    onClick={goToPrevStep}
+                    className="py-4 px-10 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 transition-colors flex items-center"
+                  >
+                    戻る
+                  </button>
+                  <button 
+                    onClick={handleCompleteClick}
+                    className="py-4 px-10 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors flex items-center"
+                  >
+                    終了
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -488,27 +480,24 @@ export default function RecipeStepsPage() {
                   </button>
                   <button 
                     onClick={() => {
-                      goToNextStep();
-                      // 次へボタンクリック時に音声システムを初期化
-                      initializeAudioSystem();
+                      if (currentStepIndex === recipe.steps.length - 1) {
+                        goToNextStep();
+                        initializeAudioSystem();
+                      } else {
+                        goToNextStep();
+                        initializeAudioSystem();
+                      }
                     }} 
-                    disabled={currentStepIndex===recipe.steps.length-1} 
-                    className="px-6 py-3 bg-green-600 text-white rounded-full"
+                    className={`px-6 py-3 rounded-full ${currentStepIndex === recipe.steps.length - 1 ? 'bg-green-600 text-white' : 'bg-green-600 text-white'}`}
                   >
-                    次へ
+                    {currentStepIndex === recipe.steps.length - 1 ? '完了' : '次へ'}
                   </button>
                 </div>
               </>
             )}
           </div>
 
-          {currentStepIndex === recipe.steps.length - 1 && !showCompletionSection && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white shadow">
-              <button onClick={goToNextStep} className="w-full py-4 bg-green-600 text-white rounded-full">
-                <Check className="inline mr-2" />調理完了
-              </button>
-            </div>
-          )}
+          {/* 画面下部の調理完了ボタンは削除 */}
         </div>
         
         {/* 調理完了確認ポップアップ */}
