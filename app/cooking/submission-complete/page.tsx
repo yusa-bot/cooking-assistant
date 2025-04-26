@@ -40,12 +40,7 @@ export default function SubmissionCompletePage() {
 
   
   // レシピ情報（実際のアプリではAPIから取得）
-  const recipe = {
-    id: recipeId,
-    name: "野菜たっぷり豚肉炒め",
-    imageUrl: "/stir-fry-vegetables.jpg",
-    description: "キャベツ、にんじん、玉ねぎを使った栄養満点の一品。甘辛い味付けで食欲アップ！",
-  }
+
 
   // レシピ帳に追加/削除
   const toggleRecipeBook = () => {
@@ -69,16 +64,40 @@ export default function SubmissionCompletePage() {
       }, 3000)
     }
   }
+  const saveDatabase = async () => {
+    try {
+      const body = currentRecipe
+      const res = await fetch('/api/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
 
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error("Failed to save recipe:", errorData)
+        throw new Error(errorData.message || "レシピの保存に失敗しました")
+      }
+    } catch (err) {
+      console.error("Error saving recipe:", err)
+      // 必要に応じてユーザーへの通知やリトライ処理を追加
+    }
+  }
   // ホームに戻る
-  const goToHome = () => {
+  const goToHome = async () => {
+    await saveDatabase()
     router.push("/")
   }
 
   // レシピ一覧に戻る
-  const goToRecipes = () => {
+  const goToRecipes = async () => {
+    await saveDatabase()
     router.push("/recipes")
   }
+  useEffect(() => {
+    console.log(currentRecipe)
+  }
+  , [])
 
   // アニメーション用のクラス
   const [animateClass, setAnimateClass] = useState("opacity-0 translate-y-4")
@@ -94,7 +113,7 @@ export default function SubmissionCompletePage() {
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <header className="w-full max-w-md mx-auto py-4 flex items-center justify-between">
         <Link
-          href={`/recipes/${recipeId}/submit-photo`}
+          href={`/cooking/submit-photo`}
           className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
         >
           <ArrowLeft className="h-5 w-5 mr-1" />
@@ -118,13 +137,14 @@ export default function SubmissionCompletePage() {
 
           {/* レシピ画像 */}
           <div className="aspect-[16/9] w-full overflow-hidden">
-            <img src={recipe.imageUrl || "/placeholder.svg"} alt={recipe.name} className="w-full h-full object-cover" />
+            <img src={currentRecipe?.photo_url } alt={currentRecipe?.title || "レシピ画像"} className="w-full h-full object-cover" />
           </div>
+          
 
           {/* レシピ情報 */}
           <div className="p-4">
-            <h2 className="text-xl font-medium mb-2">{recipe.name}</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">{recipe.description}</p>
+            <h2 className="text-xl font-medium mb-2">{currentRecipe?.title ?? ""}</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">{currentRecipe?.description ?? ""}</p>
 
             {/* ボタン */}
             <div className="flex flex-col space-y-3">

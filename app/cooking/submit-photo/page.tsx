@@ -134,13 +134,17 @@ export default function SubmitPhotoPage() {
           body: formData,
       })
       const data = await res.json()
-      
+      console.log('Uploaded image URL:', data)
       if (currentRecipe) {
         setCurrentRecipe({
           ...currentRecipe,
-          photo_url: data,
+          photo_url: data.imageUrl,
+
+
+ 
         })
       }
+      console.log('Current recipe:', currentRecipe)
     } catch (err) {
       console.error(err)
       alert('写真の保存に失敗しました')
