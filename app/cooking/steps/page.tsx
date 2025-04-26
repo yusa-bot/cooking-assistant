@@ -64,42 +64,33 @@ export default function RecipeStepsPage() {
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
-      <header className="flex items-center  sticky top-0 bg-gray-50 p-4 z-10">        
-        <h1 className="text-xl font-semibold">{recipe.title}</h1>
-        <div className="w-6" />
+      <header className="flex items-center justify-center sticky top-0 bg-gray-50 p-4 z-10">        
+        <h1 className="text-3xl font-semibold text-green-700">{recipe.title}</h1>        
       </header>
-
-      
-
       <div className="flex-1 flex flex-col items-center max-w-md mx-auto w-full">
-        <div className="mb-4 flex space-x-2">
+        <div className="mb-4 flex items-center">
           {recipe.steps.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentStepIndex(idx)}
-              className={`w-8 h-8 flex items-center justify-center rounded-full font-semibold ${
-                idx === currentStepIndex
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-300 text-gray-700"
-              }`}
-            >
-              {idx + 1}
-            </button>
+        <>
+          {idx > 0 && (
+            <div className="w-6 h-px bg-gray-300 mx-2" />
+          )}
+          <button
+            key={idx}
+            onClick={() => setCurrentStepIndex(idx)}
+            className={`
+              w-10 h-10 flex items-center justify-center rounded-full font-semibold
+              ${idx === currentStepIndex
+                ? "bg-green-600 text-white"
+                : "bg-gray-300 text-gray-700"}
+            `}
+          >
+            {idx + 1}
+          </button>
+        </>
           ))}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg w-full mb-24">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-xl font-bold">ステップ {currentStepIndex + 1}/{recipe.steps.length}</span>
-            <button
-              onClick={() => speakInstruction(step.instruction)}
-              aria-label={isSpeaking ? "音声読み上げ停止" : "音声読み上げ"}
-              className={isSpeaking ? "bg-blue-500 text-white p-2 rounded-full" : "bg-gray-100 p-2 rounded-full"}
-            >
-              <Volume2 />
-            </button>
-          </div>
-
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-300 dark:border-gray-800 w-full mb-24">          
           <section
             aria-labelledby="instruction-section"
             className="mb-6 w-full"
@@ -112,8 +103,7 @@ export default function RecipeStepsPage() {
                 overflow-y-auto    /* 縦スクロール有効 */
                 overflow-x-hidden
                 whitespace-normal break-words
-                p-4
-                bg-gray-50 dark:bg-gray-700
+                p-4                
                 border border-gray-200 dark:border-gray-600
                 rounded-lg
                 shadow-sm

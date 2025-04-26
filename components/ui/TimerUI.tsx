@@ -51,9 +51,9 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
     })
 
   return (
-    <div className="bg-white dark:bg-gray-800 px-8 rounded-xl shadow flex flex-col items-center space-y-2 w-full">
+    <div className="bg-white dark:bg-gray-800 px-5 rounded-xl  flex flex-col items-center space-y-2 w-full">
       {/* ±ボタンを常にレンダリングしてレイアウトを維持。実行中は visibility を off に */}
-      <div className={`flex gap-10 w-full px-2 ${running ? "invisible" : ""}`}>
+      <div className={`flex gap-10 w-full ${running ? "invisible" : ""}`}>
         <button
           onClick={() => adjustMinutes(1)}
           className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full flex items-center justify-center"
@@ -76,7 +76,7 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
       </div>
 
       {/* ±ボタン */}
-      <div className={`flex gap-10 w-full px-2 ${running ? "invisible" : ""}`}>
+      <div className={`flex gap-10 w-full ${running ? "invisible" : ""}`}>
         <button
           onClick={() => adjustMinutes(-1)}
           className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full flex items-center justify-center"
@@ -92,20 +92,20 @@ export default function TimerUI({ initialTime }: TimerUIProps) {
       </div>
 
       {/* 開始/停止 */}
-      <div>
+      <div className="flex-1 flex items-center justify-center w-full py-2">
         {running ? (
           <button
-        onClick={stop}
-        className="px-8 py-2 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center"
+            onClick={stop}
+            className="px-8 py-1 bg-green-700 hover:bg-green-800 text-white rounded-full flex items-center justify-center w-full"
           >
-        <Square className="mr-2" />Stop
+            <Square />
           </button>
         ) : (
           <button
-        onClick={start}
-        className="px-8 py-2 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center"
+            onClick={start}
+            className="px-8 py-1 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center w-full"
           >
-        <Play className="mr-2" />Start
+            <Play />
           </button>
         )}
       </div>
