@@ -5,7 +5,7 @@ import { ArrowLeft, Camera, X, Save } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useAtom } from 'jotai'
-import { recipeListAtom, currentRecipeAtom } from '@/lib/atoms'
+import { currentRecipeAtom } from '@/lib/atoms'
 
 interface User {
   id: string
@@ -23,9 +23,9 @@ export default function SubmitPhotoPage() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [recipeName, setRecipeName] = useState<string>("")
-  const [token, setToken] = useState<string | null>(null)
-  const [user,setUser] = useState<User>()
+  
+  const [, setToken] = useState<string | null>(null)
+  const [,setUser] = useState<User>()
   const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
 
   // ログイン
@@ -134,32 +134,25 @@ export default function SubmitPhotoPage() {
           body: formData,
       })
       const data = await res.json()
-      
+      console.log('Uploaded image URL:', data)
       if (currentRecipe) {
         setCurrentRecipe({
           ...currentRecipe,
-          photo_url: data,
+          photo_url: data.imageUrl,
+
+
+ 
         })
       }
+      console.log('Current recipe:', currentRecipe)
     } catch (err) {
       console.error(err)
       alert('写真の保存に失敗しました')
     }
 
-    try { //DBへレシピを保存
-      const res = await fetch('/api/recipes', {
-        method: 'POST',
-        body: JSON.stringify({currentRecipe}),
-      })
-      if (!res.ok) throw new Error('レシピ保存に失敗しました')
-      const data = await res.json()
+    
 
-    } catch (err) {
-      console.error(err)
-      alert('レシピの保存に失敗しました')
-    }
-
-  router.push(`/cooking/submission-complete`)
+    router.push(`/cooking/submission-complete`)
   }  
   
 
@@ -180,7 +173,7 @@ export default function SubmitPhotoPage() {
       <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
         <div className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shadow-md mb-6 p-4">
           <h2 className="text-xl font-medium mb-2">料理完成おめでとう！</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">完成した「{recipeName}」の写真を撮りましょう</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">完成した「{currentRecipe?.title}」の写真を撮りましょう</p>
 
           <div className="mb-6">
             <div className="w-full aspect-[4/3] bg-gray-100 dark:bg-gray-700 rounded-md overflow-hidden mb-2 relative">

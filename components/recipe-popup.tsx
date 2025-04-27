@@ -25,11 +25,7 @@ export default function RecipePopup({ recipe, onClose, onStartCooking }: RecipeP
 
         <p className="text-gray-600 dark:text-gray-300 mb-4">{recipe.description}</p>
 
-        {(recipe.created_at ) && (
-          <div className="flex items-center mb-4 text-sm text-gray-500">
-            {recipe.created_at && <span className="mr-2">調理時間: {recipe.created_at}</span>}            
-          </div>
-        )}
+        
 
         <div className="mb-6">
           <h3 className="font-bold mb-2">調理手順</h3>
@@ -52,42 +48,3 @@ export default function RecipePopup({ recipe, onClose, onStartCooking }: RecipeP
     </div>
   )
 }
-
-
-// export default function RecipePopup({ recipe, onClose, onStartCooking }: RecipePopupProps) {
-//   return (
-//     // ポップアップ画面閉開
-//     <div onClick={onClose}>
-//       <div onClick={(e) => e.stopPropagation()}>
-
-//         <div>
-//           <h2>{recipe.name}</h2>
-//           <button onClick={onClose}> <X/> </button>
-//         </div>
-
-//         <p>{recipe.description}</p>
-
-//         {(recipe.cookingTime || recipe.difficulty) && (
-//           <div>
-//             {recipe.cookingTime && <span>調理時間: {recipe.cookingTime}</span>}
-//             {recipe.difficulty && <span>難易度: {recipe.difficulty}</span>}
-//           </div>
-//         )}
-
-//         <div>
-//           <h3>調理手順</h3>
-//           <ol>
-//             {recipe.steps?.map((step, index) => (
-//               <li key={index}>
-//                 {step.instruction}
-//               </li>
-//             ))}
-//           </ol>
-//         </div>
-
-//         <button onClick={onStartCooking}>調理を始める</button>
-
-//       </div>
-//     </div>
-//   )
-// }

@@ -8,9 +8,9 @@ import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import { useAtom } from 'jotai'
 import { ingredientListAtom } from '@/lib/atoms' // <IngredientTypes[]>
+import Loading from "@/components/Loading";
 
-export default function ScanPage() {
-  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+export default function ScanPage() {  
   const [isCameraActive, setIsCameraActive] = useState(false)
   // <HTMLVideoElement> で「参照したいのは <video> タグですよ」
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -19,8 +19,9 @@ export default function ScanPage() {
   const router = useRouter()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [ingredient, setIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
+  const [currentIngredient,setCurrentIngredient] = useAtom(ingredientListAtom) // <IngredientTypes[]>
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   // ログインチェック
   useEffect(() => {
@@ -86,7 +87,7 @@ export default function ScanPage() {
     const ctx = canvas.getContext('2d')
     ctx?.drawImage(video, 0, 0, canvas.width, canvas.height)
     const dataUrl = canvas.toDataURL('image/png')
-    setPhotoUrl(dataUrl)
+    setPhotoUrl(dataUrl)    
     stopCamera()
   }
 
@@ -108,8 +109,7 @@ export default function ScanPage() {
     if (file) {
       const reader = new FileReader()
       reader.onload = (e) => { //非同期
-        const result = e.target?.result as string
-        setCapturedImage(result) 
+        const result = e.target?.result as string        
         setPhotoUrl(result)   
         stopCamera()
       }
@@ -119,23 +119,28 @@ export default function ScanPage() {
 
   //材料を推定 jotaiへ
   const fetchIngredients = async () => {
+    setIsLoading(true)
     try {
+      console.log("キャプチャした画像:", photoUrl)
       const res = await fetch("/api/ai/detect", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(capturedImage)
+        body: JSON.stringify({ imageUrl: photoUrl }) // 画像URLをオブジェクトに格納して送信
       })
       if (!res.ok) throw new Error("食材取得に失敗")
 
       const data = await res.json()
-      setIngredient(data) // <IngredientTypes[]>
+      console.log("取得した食材:", data)
+      setCurrentIngredient(data) // <IngredientTypes[]>
+      console.log("jotaiに保存した食材:",currentIngredient)
+      router.push("/ingredients")
     } catch (err) {
       console.error("食材の取得エラー:", err)
-      setIngredient([])
+      setCurrentIngredient([])
+      setIsLoading(false)
     }
-    router.push("/ingredients")
   }
 
   // モーダルを閉じる
@@ -146,6 +151,15 @@ export default function ScanPage() {
 
   if (!isLoggedIn && !showLoginModal) {
     return null // ログインモーダルが表示される前は何も表示しない
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center">
+        <Loading />
+        <p className="mt-4 text-lg font-bold text-green-700 dark:text-green-700">材料を推定中...</p>
+      </div>
+    )
   }
 
   return (
@@ -225,71 +239,3 @@ export default function ScanPage() {
     </main>
   )
 }
-
-
-// return (
-//   <main>
-
-//     <div>
-//       <div>
-//         {photoUrl ? (
-//           // 撮影した写真のプレビュー
-//           <img src={photoUrl} alt="撮影した材料"/>
-//         ) : (
-//           // カメラのプレビュー
-//           <video ref={videoRef} playsInline muted/>
-//         )}
-
-//         {/* 非表示のキャンバス要素 */}
-//         <canvas ref={canvasRef} className="hidden" />
-
-//         {/* 非表示のファイル入力 */}
-//         <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleFileSelect} />
-//       </div>
-
-//       <div className="w-full flex flex-col space-y-4">
-//         {!photoUrl ? (
-//           <>
-//             <button
-//               onClick={capturePhoto}
-//               className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full"
-//               disabled={!isCameraActive}
-//             >
-//               <Camera className="mr-3 h-6 w-6" />
-//               写真を撮影
-//             </button>
-
-//             <button
-//               onClick={openFileSelector}
-//               className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
-//             >
-//               <ImageIcon className="mr-3 h-6 w-6" />
-//               画像をアップロード
-//             </button>
-//           </>
-//         ) : (
-//           <>
-//             <button
-//               onClick={retakePhoto}
-//               className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 w-full dark:text-white"
-//             >
-//               <RefreshCw className="mr-3 h-6 w-6" />
-//               撮り直す
-//             </button>
-
-//             <button
-//               onClick={fetchIngredients}
-//               className="h-16 text-lg font-medium flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full w-full"
-//             >
-//               材料を確認
-//             </button>
-//           </>
-//         )}
-//       </div>
-//     </div>
-
-//     {/* ログインプロンプトモーダル */}
-//     <LoginPromptModal isOpen={showLoginModal} onClose={closeLoginModal} featureName="材料スキャン機能" />
-//   </main>
-// )
-

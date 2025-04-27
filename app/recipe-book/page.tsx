@@ -6,6 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RecipePopup from "@/components/recipe-popup"
 import { RecipeTypes } from "@/types/recipeTypes"
+import { useAtom } from "jotai"
+import { currentRecipeAtom } from "@/lib/atoms"
 
 interface User {
     id: string
@@ -24,59 +26,59 @@ export default function RecipeBookPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeTypes | null>(null)
   const [username, setUsername] = useState("")
   const [user,setUser] = useState<User>()
+  const [showMenu, setShowMenu] = useState(false)
+  const [currentRecipe, setCurrentRecipe] = useAtom(currentRecipeAtom)
 
     // ログイン状態と履歴を確認
     useEffect(() => {
-        const fetchUser = async () => {
-            const res = await fetch("/api/auth/user")
-            if (!res.ok) {
-                setIsLoggedIn(false)
-                setUsername("")
-                return
-            }
-            
-            const data = await res.json()
-            console.log(data)
-            if (data.user) {
-                setIsLoggedIn(true)
-                setUsername(data.user.userName || "")
-            } else {
-                setIsLoggedIn(false)
-                setUsername("")
-                router.push("/login")
-            }
-        }
-        fetchUser()
-    },[user])
-        
-
-    useEffect(() => {
-
-        if (!user) return
-        const userData = user as User
-        setIsLoggedIn(true)
-        setUsername(userData.userName || "")
-  
-        // ログイン済みの場合、レシピ帳データを取得
-        const fetchFavorite = async () => {
-          try {
-            const res = await fetch("/api/recipes", {
-              method: 'GET',
-              headers: {
-                Authorization: `Bearer ${userData.id}`,
-              },
-            })
-            if (!res.ok) throw new Error("レシピ帳取得に失敗")
-              const data: RecipeTypes[] = await res.json()
-            setFavoriteRecipes(data)
-          } catch (err) {
-            console.error("レシピ帳の取得エラー:", err)
+      const fetchUserAndFavorites = async () => {
+        try {
+          const res = await fetch("/api/auth/user")
+          if (!res.ok) {
+            setIsLoggedIn(false)
+            setUsername("")
             setFavoriteRecipes([])
+            router.push("/login")
+            return
           }
+
+          const data = await res.json()
+          if (data.user) {
+            setIsLoggedIn(true)
+            setUsername(data.user.userName || "")
+            setUser(data.user)
+
+            // ログイン済みの場合、レシピ帳データを取得
+            try {
+              const recipesRes = await fetch("/api/recipes/favorite", {
+                method: 'GET',
+                headers: {
+                  Authorization: `Bearer ${data.user.id}`,
+                },
+              })
+              if (!recipesRes.ok) throw new Error("レシピ帳取得に失敗")
+              const recipesData: RecipeTypes[] = await recipesRes.json()
+              setFavoriteRecipes(recipesData)
+            } catch (err) {
+              console.error("レシピ帳の取得エラー:", err)
+              setFavoriteRecipes([])
+            }
+          } else {
+            setIsLoggedIn(false)
+            setUsername("")
+            setFavoriteRecipes([])
+            router.push("/login")
+          }
+        } catch (err) {
+          setIsLoggedIn(false)
+          setUsername("")
+          setFavoriteRecipes([])
+          router.push("/login")
         }
-        fetchFavorite()
-        
-      }, [router]);
+      }
+
+      fetchUserAndFavorites()
+    }, [])
 
   // レシピをクリックしたときの処理
   const handleRecipeClick = (recipe: RecipeTypes) => {
@@ -88,10 +90,11 @@ export default function RecipeBookPage() {
   }
 
   // 調理を開始する
-  const startCooking = (recipeId: string) => {
+  const startCooking = () => {
     // 遷移元を記録
-    localStorage.setItem("recipeSource", "recipe-book")
-    router.push(`/recipes/${recipeId}/steps`)
+    setCurrentRecipe(selectedRecipe)
+    
+    router.push(`/cooking/steps`)
   }
 
   if (!isLoggedIn) {
@@ -105,8 +108,10 @@ export default function RecipeBookPage() {
           <ArrowLeft className="h-5 w-5 mr-1" />
           <span>戻る</span>
         </Link>
-        <h1 className="text-xl font-semibold">レシピ帳</h1>
-        <div className="w-16"></div> {/* スペーサー */}
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-xl font-semibold text-center">レシピ帳</h1>
+        </div>
+        <div className="w-16" /> {/* 右側のスペース確保用 */}
       </header>
 
       <div className="flex flex-col items-center justify-start flex-1 w-full max-w-md mx-auto">
@@ -149,7 +154,7 @@ export default function RecipeBookPage() {
         <RecipePopup
           recipe={selectedRecipe}
           onClose={() => setSelectedRecipe(null)}
-          onStartCooking={() => startCooking(selectedRecipe.id!)}
+          onStartCooking={() => startCooking()}
         />
       )}
     </main>

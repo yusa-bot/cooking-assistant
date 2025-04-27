@@ -9,13 +9,12 @@ import { getSpeechRecognition } from "@/utils/speech-recognition"
 import { getSpeechSynthesis } from "@/utils/speech-synthesis"
 import { useAtom } from 'jotai'
 import { currentRecipeAtom } from "@/lib/atoms"
-import { RecipeTypes } from "@/types/recipeTypes"
 import { handleVoiceQuery } from "@/lib/handleVoiceQuery"
 
 
 export default function RecipeStepsPage() {  
   const router = useRouter()
-  const [recipe] = useAtom(currentRecipeAtom)
+  const [recipe,] = useAtom(currentRecipeAtom)
   
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isListening, setIsListening] = useState(false)
@@ -26,8 +25,7 @@ export default function RecipeStepsPage() {
   const initialLoadRef = useRef(true)
   // 音声システムが初期化されたかどうかを追跡
   const [isAudioInitialized, setIsAudioInitialized] = useState(false)
-  // 調理開始画面が表示されているかどうか
-  const [showStartCookingOverlay, setShowStartCookingOverlay] = useState(true)
+  
   // 完了確認ポップアップを表示するかどうか
   const [showCompletionPopup, setShowCompletionPopup] = useState(false)
   // 完了セクションを表示するかどうか
@@ -97,8 +95,7 @@ export default function RecipeStepsPage() {
   const handleStartCooking = () => {
     // 音声システムを初期化
     initializeAudioSystem();
-    // オーバーレイを非表示に
-    setShowStartCookingOverlay(false);
+    
     
     // 少し遅延を入れてから最初のステップの指示を読み上げる
     setTimeout(() => {
@@ -280,7 +277,7 @@ export default function RecipeStepsPage() {
   // 定期的にマイクの状態をチェックする
   useEffect(() => {
     // 音声システムが初期化されている場合のみ実行
-    if (!isAudioInitialized || showStartCookingOverlay) return;
+    if (!isAudioInitialized ) return;
     
     // 定期的にマイク状態をチェック (10秒ごと)
     const intervalId = setInterval(() => {
@@ -291,29 +288,12 @@ export default function RecipeStepsPage() {
     return () => {
       clearInterval(intervalId);
     };
-  }, [isAudioInitialized, showStartCookingOverlay, isPausedForSpeech]);
+  }, [isAudioInitialized, isPausedForSpeech]);
 
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8 relative">
-      {/* 調理開始オーバーレイ */}
-      {showStartCookingOverlay && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white mx-5 dark:bg-gray-800 p-8 rounded-xl max-w-md w-full text-center">
-            <h2 className="text-2xl font-bold mb-4">{recipe.title}</h2>
-            <p className="mb-6 text-gray-600 dark:text-gray-300">準備はできましたか？</p>
-            <p className="mb-6 text-gray-500 dark:text-gray-400 text-xs">
-              ※ ボタンをタップすると音声ガイドが始まります
-            </p>
-            <button
-              onClick={handleStartCooking}
-              className="w-full py-4 px-6 bg-green-600 text-white rounded-full flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
-            >
-              <PlayCircle className="h-6 w-6" />
-              調理を開始する
-            </button>
-          </div>
-        </div>
-      )}
+      
+      
 
       <header className="flex items-center justify-center sticky top-0 bg-gray-50 p-4 z-10">        
         <h1 className="text-3xl font-semibold text-green-700">{recipe.title}</h1>        
