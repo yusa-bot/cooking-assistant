@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Camera, Search, BookOpen, History, ChevronRight, Star, Clock, ChefHat } from "lucide-react"
+import { Camera, BookOpen, History, ChevronRight, Star, Clock, ChefHat } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
@@ -12,6 +12,8 @@ const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 import { createClient } from "@/utils/supabase/client"
 import { useAtom } from "jotai"
 import { currentRecipeAtom } from "@/lib/atoms"
+import { set } from "zod"
+
 
 interface User {
   id: string
@@ -30,9 +32,9 @@ export default function Home() {
   }, [])
 
   // ユーザー状態
-  const [user, setUser] = useState<User>()
+  const [user, setUser] = useState<User|null>()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [username, setUsername] = useState("")
+  
 
   // UI状態
   const [activeTab, setActiveTab] = useState<'recent' | 'favorite'>('recent')
@@ -45,41 +47,39 @@ export default function Home() {
   const [cookingHistory, setCookingHistory] = useState<RecipeTypes[]>([])
   const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeTypes[]>([])
   const [isLoading, setIsLoading] = useState(true)
-
-  // ユーザー情報の取得
   useEffect(() => {
-    const fetchUser = async () => {
-      setIsLoading(true)
-      try {
-        const res = await fetch("/api/auth/user")
-        if (!res.ok) {
-          setIsLoggedIn(false)
-          setUsername("")
-          setIsLoading(false)
-          return
-        }
-        
-
-        const data = await res.json()
-        console.log(data)
-        if (data.user) {
-          setUser(data.user)
-          setIsLoggedIn(true)
-          setUsername(data.user.userName || "")
-          await fetchUserData(data.user)
-        } else {
-          setIsLoggedIn(false)
-          setUsername("")
-        }
-      } catch (error) {
-        console.error("ユーザー情報の取得に失敗しました", error)
-      } finally {
-        setIsLoading(false)
+		const getUser = async () => {
+      try{
+			const { data: { user } } = await supabase.auth.getUser();
+			if (!user) {
+        setIsLoggedIn(false)
+        setUser(null)
+        return
       }
+      setIsLoggedIn(true)
+			setUser({
+        id: user.id,
+        email: user.email ?? '',
+        userName: user?.user_metadata?.user_name ?? '',				
+			});
+    }catch (error) {
+      console.error("ユーザー情報の取得に失敗しました", error)
+      setIsLoggedIn(false)
+      setUser(null)
+    }finally{
+      setIsLoading(false)      
     }
+    
+  
 
-    fetchUser()
-  }, [])
+		};
+
+		// userがnullの場合のみgetUserを呼び出す
+		if (!user) {
+			getUser();
+		}
+	}, []);
+  // ユーザー情報の取得
 
   // ユーザーデータの取得
   const fetchUserData = async (userData: User) => {
@@ -110,11 +110,17 @@ export default function Home() {
     }
   }
 
+  useEffect(() => {
+    if (user) {
+      fetchUserData(user)
+    }
+  }, [user])
+
   // ログアウト処理
   const handleLogout = () => {
     supabase.auth.signOut()
     setIsLoggedIn(false)
-    setUsername("")
+    setUser(null)
     router.push("/login")
   }
 
@@ -184,7 +190,7 @@ export default function Home() {
           {isLoggedIn ? (
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-green-800 hidden md:inline-block">
-                {username} さん
+                {user?.userName} さん
               </span>
               <div className="flex space-x-1">
                 <button
