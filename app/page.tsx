@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Camera, Search, BookOpen, History, ChevronRight, Star, Clock, ChefHat } from "lucide-react"
+import { Camera, BookOpen, History, ChevronRight, Star, Clock, ChefHat } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
@@ -12,6 +12,8 @@ const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 import { createClient } from "@/utils/supabase/client"
 import { useAtom } from "jotai"
 import { currentRecipeAtom } from "@/lib/atoms"
+import { set } from "zod"
+
 
 interface User {
   id: string
@@ -30,9 +32,9 @@ export default function Home() {
   }, [])
 
   // ユーザー状態
-  const [user, setUser] = useState<User>()
+  const [user, setUser] = useState<User|null>()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [username, setUsername] = useState("")
+  
 
   // UI状態
   const [activeTab, setActiveTab] = useState<'recent' | 'favorite'>('recent')
@@ -45,41 +47,39 @@ export default function Home() {
   const [cookingHistory, setCookingHistory] = useState<RecipeTypes[]>([])
   const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeTypes[]>([])
   const [isLoading, setIsLoading] = useState(true)
-
-  // ユーザー情報の取得
   useEffect(() => {
-    const fetchUser = async () => {
-      setIsLoading(true)
-      try {
-        const res = await fetch("/api/auth/user")
-        if (!res.ok) {
-          setIsLoggedIn(false)
-          setUsername("")
-          setIsLoading(false)
-          return
-        }
-        
-
-        const data = await res.json()
-        console.log(data)
-        if (data.user) {
-          setUser(data.user)
-          setIsLoggedIn(true)
-          setUsername(data.user.userName || "")
-          await fetchUserData(data.user)
-        } else {
-          setIsLoggedIn(false)
-          setUsername("")
-        }
-      } catch (error) {
-        console.error("ユーザー情報の取得に失敗しました", error)
-      } finally {
-        setIsLoading(false)
+		const getUser = async () => {
+      try{
+			const { data: { user } } = await supabase.auth.getUser();
+			if (!user) {
+        setIsLoggedIn(false)
+        setUser(null)
+        return
       }
+      setIsLoggedIn(true)
+			setUser({
+        id: user.id,
+        email: user.email ?? '',
+        userName: user?.user_metadata?.user_name ?? '',				
+			});
+    }catch (error) {
+      console.error("ユーザー情報の取得に失敗しました", error)
+      setIsLoggedIn(false)
+      setUser(null)
+    }finally{
+      setIsLoading(false)      
     }
+    
+  
 
-    fetchUser()
-  }, [])
+		};
+
+		// userがnullの場合のみgetUserを呼び出す
+		if (!user) {
+			getUser();
+		}
+	}, []);
+  // ユーザー情報の取得
 
   // ユーザーデータの取得
   const fetchUserData = async (userData: User) => {
@@ -110,11 +110,17 @@ export default function Home() {
     }
   }
 
+  useEffect(() => {
+    if (user) {
+      fetchUserData(user)
+    }
+  }, [user])
+
   // ログアウト処理
   const handleLogout = () => {
     supabase.auth.signOut()
     setIsLoggedIn(false)
-    setUsername("")
+    setUser(null)
     router.push("/login")
   }
 
@@ -184,7 +190,7 @@ export default function Home() {
           {isLoggedIn ? (
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-green-800 hidden md:inline-block">
-                {username} さん
+                {user?.userName} さん
               </span>
               <div className="flex space-x-1">
                 <button
@@ -294,34 +300,55 @@ export default function Home() {
               <p className="mt-4 text-gray-600">読み込み中...</p>
             </div>
           ) : displayRecipes.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayRecipes.map((recipe) => (
-                <div
-                  key={recipe.id}
-                  onClick={() => handleRecipeClick(recipe)}
-                  className="group bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-100 hover:border-green-200 hover:-translate-y-0.5"
-                >
-                  <div className="aspect-[4/3] relative overflow-hidden">
-                    <img
-                      src={recipe.photo_url || "/placeholder.svg"}
-                      alt={recipe.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {recipe.is_favorite && (
-                      <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayRecipes.slice(0, 2).map((recipe) => (
+                  <div
+                    key={recipe.id}
+                    onClick={() => handleRecipeClick(recipe)}
+                    className="group bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-100 hover:border-green-200 hover:-translate-y-0.5"
+                  >
+                    <div className="aspect-[4/3] relative overflow-hidden">
+                      <img
+                        src={recipe.photo_url || "/placeholder.svg"}
+                        alt={recipe.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {recipe.is_favorite && (
+                        <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
+                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-medium text-gray-900 line-clamp-1">{recipe.title}</h3>
+                      <div className="mt-1 flex items-center text-xs text-gray-500">
+                        <Clock className="h-3 w-3 mr-1" />
+                        <span>{recipe.created_at?.split('T')[0] || '最近'}</span>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-gray-900 line-clamp-1">{recipe.title}</h3>
-                    <div className="mt-1 flex items-center text-xs text-gray-500">
-                      <Clock className="h-3 w-3 mr-1" />
-                      <span>{recipe.created_at?.split('T')[0] || '最近'}</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex justify-end mt-4 gap-2">
+                {activeTab === 'recent' ? (
+                  <button
+                    onClick={() => router.push('/history')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+                  >
+                    もっと見る
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push('/recipe-book')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+                  >
+                    もっと見る
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg p-8 text-center shadow-sm border border-gray-100">
