@@ -7,9 +7,8 @@ import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import RecipePopup from "@/components/recipe-popup"
 import { RecipeTypes } from "@/types/recipeTypes"
-import Lottie from "lottie-react"
-// @ts-ignore
-import animationData from "@/public/animation/homeAnimation.json"
+import dynamic from "next/dynamic"
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 import { createClient } from "@/utils/supabase/client"
 import { useAtom } from "jotai"
 import { currentRecipeAtom } from "@/lib/atoms"
@@ -23,6 +22,12 @@ interface User {
 export default function Home() {
   const supabase = createClient()
   const router = useRouter()
+  const [animationData, setAnimationData] = React.useState<any>(null)
+  React.useEffect(() => {
+    fetch("/animation/homeAnimation.json")
+      .then((res) => res.json())
+      .then((data) => setAnimationData(data))
+  }, [])
 
   // ユーザー状態
   const [user, setUser] = useState<User>()
@@ -421,11 +426,13 @@ export default function Home() {
         {/* パターン4: フッター直上 */}
         <div className="flex justify-center items-center mt-0 mb-0">
           <div className="relative w-30 h-30">
-            <Lottie
-              animationData={animationData}
-              loop={true}
-              style={{ width: '100%', height: '100%' }}
-            />
+            {animationData && (
+              <Lottie
+                animationData={animationData}
+                loop={true}
+                style={{ width: '100%', height: '100%' }}
+              />
+            )}
           </div>
         </div>
       </div>

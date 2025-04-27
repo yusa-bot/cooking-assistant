@@ -6,7 +6,8 @@ import { ArrowLeft, Plus, X, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
-import Loading from "@/components/Loading"
+import dynamic from "next/dynamic"
+const Loading = dynamic(() => import("@/components/Loading"), { ssr: false })
 import { useAtom } from 'jotai'
 import { ingredientListAtom,generatedRecipesAtom } from '@/lib/atoms'
 import { IngredientTypes } from '@/types/recipeTypes' // <IngredientTypes[]>

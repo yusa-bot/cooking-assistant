@@ -8,7 +8,8 @@ import { useRouter } from "next/navigation"
 import LoginPromptModal from "@/components/login-prompt-modal"
 import { useAtom } from 'jotai'
 import { ingredientListAtom } from '@/lib/atoms' // <IngredientTypes[]>
-import Loading from "@/components/Loading";
+import dynamic from "next/dynamic"
+const Loading = dynamic(() => import("@/components/Loading"), { ssr: false });
 
 export default function ScanPage() {  
   const [isCameraActive, setIsCameraActive] = useState(false)
