@@ -140,7 +140,7 @@ export default function Home() {
   // 調理開始
   const startCooking = (recipeId: string, source: string) => {
     setCurentRecipe(selectedRecipe)
-    router.push(`/recipes/${recipeId}/steps`)
+    router.push(`/cooking/steps`)
   }
 
   // 表示するレシピリスト

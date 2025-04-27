@@ -159,13 +159,7 @@ export default function SubmitPhotoPage() {
   return (
     <main className="flex min-h-screen flex-col p-4 md:p-8">
       <header className="w-full max-w-md mx-auto py-4 flex items-center justify-between">
-        <Link
-          href={`/recipes/${recipeId}/steps`}
-          className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-        >
-          <ArrowLeft className="h-5 w-5 mr-1" />
-          <span>戻る</span>
-        </Link>
+
         <h1 className="text-xl font-semibold">料理の写真</h1>
         <div className="w-16"></div> {/* スペーサー */}
       </header>
