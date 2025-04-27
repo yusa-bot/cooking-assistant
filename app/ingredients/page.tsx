@@ -203,7 +203,7 @@ export default function IngredientsPage({ capturedImage }: Props) {
             材料リスト
           </h2>
           {ingredientList.length > 0 ? (
-          <ul className="mb-6 space-y-3">
+          <ul className="mb-6 space-y-3 max-h-[336px] overflow-y-auto pr-1">
             <li className="flex items-center bg-transparent px-1 text-xs text-gray-500 dark:text-gray-400 font-semibold space-x-3 mb-0 pb-0" style={{ marginBottom: '-0.25rem' }}>
               <span className="flex-1 min-w-0">材料名</span>
               <span className="w-8 text-center">量</span>

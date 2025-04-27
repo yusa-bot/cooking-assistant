@@ -300,34 +300,55 @@ export default function Home() {
               <p className="mt-4 text-gray-600">読み込み中...</p>
             </div>
           ) : displayRecipes.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {displayRecipes.map((recipe) => (
-                <div
-                  key={recipe.id}
-                  onClick={() => handleRecipeClick(recipe)}
-                  className="group bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-100 hover:border-green-200 hover:-translate-y-0.5"
-                >
-                  <div className="aspect-[4/3] relative overflow-hidden">
-                    <img
-                      src={recipe.photo_url || "/placeholder.svg"}
-                      alt={recipe.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    {recipe.is_favorite && (
-                      <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+            <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayRecipes.slice(0, 2).map((recipe) => (
+                  <div
+                    key={recipe.id}
+                    onClick={() => handleRecipeClick(recipe)}
+                    className="group bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-100 hover:border-green-200 hover:-translate-y-0.5"
+                  >
+                    <div className="aspect-[4/3] relative overflow-hidden">
+                      <img
+                        src={recipe.photo_url || "/placeholder.svg"}
+                        alt={recipe.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {recipe.is_favorite && (
+                        <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
+                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="font-medium text-gray-900 line-clamp-1">{recipe.title}</h3>
+                      <div className="mt-1 flex items-center text-xs text-gray-500">
+                        <Clock className="h-3 w-3 mr-1" />
+                        <span>{recipe.created_at?.split('T')[0] || '最近'}</span>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-gray-900 line-clamp-1">{recipe.title}</h3>
-                    <div className="mt-1 flex items-center text-xs text-gray-500">
-                      <Clock className="h-3 w-3 mr-1" />
-                      <span>{recipe.created_at?.split('T')[0] || '最近'}</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex justify-end mt-4 gap-2">
+                {activeTab === 'recent' ? (
+                  <button
+                    onClick={() => router.push('/history')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+                  >
+                    もっと見る
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push('/recipe-book')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors font-medium"
+                  >
+                    もっと見る
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg p-8 text-center shadow-sm border border-gray-100">
