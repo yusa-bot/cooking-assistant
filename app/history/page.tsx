@@ -77,7 +77,6 @@ export default function HistoryPage() {
 
   // 調理を開始する
   const startCooking = () => {
-    // 遷移元を記録
     setCurrentRecipe(selectedRecipe)
     //TODO:履歴から調理する場合は、調理スタート時にjotaiに保存する
     router.push(`/cooking/steps`)
