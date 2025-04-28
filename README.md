@@ -15,6 +15,7 @@ https://cooking-assistant-deploy.vercel.app/
 フロント担当とバック担当に分かれ、私はフロントを担当。
 
 ## 技術スタック
+```bash
 フロントエンド: Next.js(App Router), React, TypeScript, Tailwind CSS
 バックエンド: Node.js
 認証・DB: Supabase
@@ -22,12 +23,14 @@ AI連携: OpenAI API (画像認識・レシピ生成)
 UI設計支援: v0,Figma
 その他: Lottieアニメーション, Lucideアイコン
 deploy: vercel
+```
 
 ## AI活用
 コーディング補助: GitHub Copilot, Cline
 設計補助: v0, Mermaid
 
 ## 主な機能
+```bash
 食材スキャン: カメラで食材を撮影し、AIが自動で食材を識別
 レシピ提案: 識別された食材から最適なレシピを提案
 音声アシスタント: 調理中の質問に音声で回答
@@ -35,3 +38,4 @@ deploy: vercel
 タイマー機能: 調理時間の管理をサポート
 料理履歴: 完成した料理を記録し、振り返りが可能
 レシピ帳: お気に入りのレシピを保存
+```
