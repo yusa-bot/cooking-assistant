@@ -2,7 +2,7 @@
 AI-Chefは、手持ちの材料を撮影するとAIが最適なレシピを提案し、調理ガイドをしてくれるアプリケーションです。
 料理中画面では、音声読み上げ・認識機能でハンズフリー操作を可能にし、料理中でも使いやすいUIになっています。
 
-開発体験記: 
+開発体験記: https://qiita.com/yubot/items/208d10b3cbb315df3507
 topas: https://topaz.dev/projects/0e4b5dea401914a3868f
 
 ![image](https://ptera-publish.topaz.dev/project/01JSTSPQSFDT0FMKMQ28F1B9XE.png)
